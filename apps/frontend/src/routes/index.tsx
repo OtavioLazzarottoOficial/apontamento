@@ -33,10 +33,12 @@ type Pagina = {
   }[];
 };
 type Linha = {
+  concluida?: boolean;
   ordem: string;
   dataEntrega: string;
   programacao: string;
   lote: string;
+  area: number;
   pendente: number;
   anterior: number;
   pecasPorCiclo: number;
@@ -79,7 +81,7 @@ type Perfil = {
   podeExportar: boolean;
 };
 type Resumo = { id: string; nome: string; versao: number };
-const base = (import.meta.env.VITE_API_URL as string).replace(/\/$/, "");
+const base = (import.meta.env.VITE_API_URL || "http://localhost:3000").replace(/\/$/, "");
 
 async function requisicao<T>(path: string, init: RequestInit): Promise<T> {
   const resposta = await fetch(`${base}${path}`, init);
@@ -105,8 +107,9 @@ function Home() {
   const [senha, setSenha] = useState("");
   const [id, setId] = useState("");
   const [relatorio, setRelatorio] = useState<Relatorio | null>(null);
-  const [preview, setPreview] = useState<string[]>([]);
-  const [previewErro, setPreviewErro] = useState("");
+  const [busca, setBusca] = useState("");
+  const [tela, setTela] = useState<"mapa" | "ordens" | "edicao">("mapa");
+  const [paginaData, setPaginaData] = useState(0);
   const [campoSelecionado, setCampoSelecionado] = useState<{
     indice: number;
     campo: CampoEditavel;
@@ -117,29 +120,6 @@ function Home() {
   } | null>(null);
   const [mensagem, setMensagem] = useState("");
   const [ocupado, setOcupado] = useState(false);
-
-  useEffect(() => {
-    if (!relatorio || !token) {
-      setPreview([]);
-      return;
-    }
-    const abortador = new AbortController();
-    setPreview([]);
-    setPreviewErro("");
-    void requisicao<{ paginas: string[] }>(
-      `/relatorios/${encodeURIComponent(relatorio.id)}/preview`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-        signal: abortador.signal,
-      },
-    )
-      .then((resultado) => setPreview(resultado.paginas))
-      .catch(() => {
-        if (!abortador.signal.aborted)
-          setPreviewErro("Não foi possível carregar a prévia visual.");
-      });
-    return () => abortador.abort();
-  }, [relatorio?.id, relatorio?.versao, token]);
 
   async function executar(acao: () => Promise<void>) {
     setOcupado(true);
@@ -184,6 +164,9 @@ function Home() {
       { headers: { Authorization: `Bearer ${chave}` } },
     );
     setRelatorio(resultado);
+    setBusca("");
+    setTela("mapa");
+    setPaginaData(0);
     setId(resultado.id);
   }
 
@@ -207,6 +190,18 @@ function Home() {
       setRelatorios(lista.relatorios);
       form.reset();
       setMensagem("PDF importado com sucesso.");
+    });
+  }
+
+  async function alterarConclusao(indice: number, concluida: boolean) {
+    if (!relatorio) return;
+    await executar(async () => {
+      const atualizado = await requisicao<Relatorio>(`/relatorios/${encodeURIComponent(relatorio.id)}/linhas/${indice}/conclusao`, {
+        method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ versaoEsperada: relatorio.versao, concluida }),
+      });
+      setRelatorio(atualizado);
+      setMensagem(concluida ? "Ordem marcada como concluída." : "Ordem reaberta.");
     });
   }
 
@@ -295,6 +290,7 @@ function Home() {
           Sair
         </button>
       </div>
+      <details key={relatorio ? "com-relatorio" : "sem-relatorio"} className="report-options" open={!relatorio}><summary>Importar ou abrir PDF</summary>
       <div className="tool-grid">
         {(perfil?.papel === "ADMINISTRADOR" || perfil?.podeEditar) && (
           <form onSubmit={importar} className="tool-card">
@@ -355,7 +351,8 @@ function Home() {
           </ul>
         )}
       </section>
-      {perfil?.papel === "ADMINISTRADOR" && <CadastroUsuario token={token} />}
+      </details>
+      {perfil?.papel === "ADMINISTRADOR" && !relatorio && <CadastroUsuario token={token} />}
       {mensagem && (
         <p role="status" className="notice">
           {mensagem}
@@ -363,78 +360,18 @@ function Home() {
       )}
       {relatorio && (
         <section className="document">
-          <div>
-            <h2>{relatorio.conteudo.nome}</h2>
-            <p>
-              Identificador: <strong>{relatorio.id}</strong> · Versão{" "}
-              {relatorio.versao} · {relatorio.conteudo.paginas.length} páginas
-            </p>
-            <p>
-              A exportação será liberada após a definição e implementação do
-              recálculo da serraria.
-            </p>
-            {!relatorio.conteudo.resumos && (
-              <p>
-                Os valores exibidos são os do PDF importado. Ao salvar uma
-                linha, o sistema recalcula as áreas, os tempos e os resumos dos
-                grupos existentes.
-              </p>
-            )}
-            {(perfil?.papel === "ADMINISTRADOR" || perfil?.podeEditar) && (
-              <p>
-                Clique nos campos destacados da página para editar produto,
-                componente, dimensões, quantidades e tempos.
-              </p>
-            )}
-            {(perfil?.papel === "ADMINISTRADOR" || perfil?.podeExportar) && (
-              <button
-                className="secondary"
-                disabled
-                onClick={() => void exportar()}
-              >
-                Exportar PDF
-              </button>
-            )}
+          <div className="document-heading">
+            <div><p className="eyebrow">RELATÓRIO DE PRODUÇÃO</p><h2>{relatorio.conteudo.nome || "Relatório sem nome"}</h2><p>Versão {relatorio.versao} · {relatorio.conteudo.paginas.length} páginas</p><details className="report-id"><summary>Identificador do relatório</summary><code>{relatorio.id}</code></details></div>
+            {(perfil?.papel === "ADMINISTRADOR" || perfil?.podeExportar) && <button className="secondary" disabled title="Disponível após a implementação do recálculo da serraria" onClick={() => void exportar()}>Exportar PDF</button>}
           </div>
-          {(perfil?.papel === "ADMINISTRADOR" || perfil?.podeEditar) && (
-            <EdicaoLinhas
-              relatorio={relatorio}
-              token={token}
-              aoSalvar={setRelatorio}
-            />
-          )}
-          {relatorio.conteudo.resumos && (
-            <p>
-              Resumo recalculado: {relatorio.conteudo.resumos.total.necessaria}{" "}
-              necessárias · {relatorio.conteudo.resumos.total.realizada}{" "}
-              realizadas · {relatorio.conteudo.resumos.total.saldo} saldo ·{" "}
-              {formatarDuracao(
-                relatorio.conteudo.resumos.total.tempoProducaoSegundos,
-              )}{" "}
-              de produção
-            </p>
-          )}
-          {previewErro && <p role="alert">{previewErro}</p>}
-          {preview.length === 0 && !previewErro && (
-            <p>Preparando prévia das páginas…</p>
-          )}
-          {preview.map((imagem, indice) => (
-            <PaginaVisual
-              key={indice}
-              imagem={imagem}
-              pagina={relatorio.conteudo.paginas[indice]}
-              linhas={relatorio.conteudo.linhas}
-              editavel={
-                perfil?.papel === "ADMINISTRADOR" || !!perfil?.podeEditar
-              }
-              aoSelecionar={(indiceLinha, campo) =>
-                setCampoSelecionado({ indice: indiceLinha, campo })
-              }
-              aoSelecionarTexto={(referencia, rotulo) =>
-                setTextoSelecionado({ referencia, rotulo })
-              }
-            />
-          ))}
+          <nav className="report-nav" aria-label="Visualizações do relatório">
+            <button type="button" className={tela === "mapa" ? "" : "secondary"} aria-current={tela === "mapa" ? "page" : undefined} onClick={() => setTela("mapa")}>Mapa de sequenciamento</button>
+            <button type="button" className={tela === "ordens" ? "" : "secondary"} aria-current={tela === "ordens" ? "page" : undefined} onClick={() => setTela("ordens")}>Visualizar ordens</button>
+            {(perfil?.papel === "ADMINISTRADOR" || perfil?.podeEditar) && <button type="button" className={tela === "edicao" ? "" : "secondary"} aria-current={tela === "edicao" ? "page" : undefined} onClick={() => setTela("edicao")}>Editar quantidades e tempos</button>}
+          </nav>
+          {tela === "ordens" && <ResumoOrdens linhas={relatorio.conteudo.linhas} busca={busca} aoBuscar={setBusca} />}
+          {tela === "edicao" && (perfil?.papel === "ADMINISTRADOR" || perfil?.podeEditar) && <section className="report-section"><EdicaoLinhas relatorio={relatorio} token={token} aoSalvar={setRelatorio} /></section>}
+          {tela === "mapa" && <section className="report-section report-pages"><PaginaReconstruida paginas={relatorio.conteudo.paginas} linhas={relatorio.conteudo.linhas} paginaData={paginaData} aoMudarPagina={setPaginaData} editavel={perfil?.papel === "ADMINISTRADOR" || !!perfil?.podeEditar} ocupado={ocupado} aoConcluir={(indice, concluida) => void alterarConclusao(indice, concluida)} aoSelecionar={(indice, campo) => setCampoSelecionado({ indice, campo })} aoSelecionarTexto={(referencia, rotulo) => setTextoSelecionado({ referencia, rotulo })} /></section>}
           {campoSelecionado && (
             <EditorCampo
               relatorio={relatorio}
@@ -463,6 +400,17 @@ function Home() {
       )}
     </section>
   );
+}
+
+function ResumoOrdens({ linhas, busca, aoBuscar }: { linhas: Linha[]; busca: string; aoBuscar: (valor: string) => void }) {
+  const termo = busca.trim().toLocaleLowerCase("pt-BR");
+  const filtradas = linhas.filter((linha) => [linha.ordem, linha.lote, linha.dataEntrega, linha.programacao].some((valor) => String(valor ?? "").toLocaleLowerCase("pt-BR").includes(termo)));
+  return <section className="report-section">
+    <div className="section-heading"><div><h3>Ordens de produção</h3><p>Consulte as quantidades e os prazos identificados no PDF.</p></div><label className="report-search">Buscar ordem, lote ou entrega<input type="search" value={busca} onChange={(evento) => aoBuscar(evento.target.value)} placeholder="Ex.: número da OP" /></label></div>
+    <div className="table-scroll"><table className="report-table"><thead><tr><th>Ordem</th><th>Entrega</th><th>Lote</th><th>Programação</th><th>Necessária</th><th>Realizada</th><th>Saldo</th><th>Produção</th></tr></thead><tbody>
+      {filtradas.map((linha, indice) => <tr key={indice}><th scope="row">{linha.ordem || "—"}</th><td>{linha.dataEntrega || "—"}</td><td>{linha.lote || "—"}</td><td>{linha.programacao || "—"}</td><td>{linha.necessaria.toLocaleString("pt-BR")}</td><td>{linha.realizada.toLocaleString("pt-BR")}</td><td>{linha.saldo.toLocaleString("pt-BR")}</td><td>{formatarDuracao(linha.tempoProducaoSegundos)}</td></tr>)}
+    </tbody></table>{filtradas.length === 0 && <p className="table-empty">{linhas.length ? "Nenhuma ordem encontrada para esta busca." : "Nenhuma ordem identificada neste relatório."}</p>}</div>
+  </section>;
 }
 
 function CadastroUsuario({ token }: { token: string }) {
@@ -772,117 +720,31 @@ const rotulosCampo: Record<CampoEditavel, string> = {
   dimensoes: "Dimensões",
 };
 
-function PaginaVisual({
-  imagem,
-  pagina,
-  linhas,
-  editavel,
-  aoSelecionar,
-  aoSelecionarTexto,
-}: {
-  imagem: string;
-  pagina: Pagina;
-  linhas: Linha[];
-  editavel: boolean;
-  aoSelecionar: (indice: number, campo: CampoEditavel) => void;
-  aoSelecionarTexto: (referencia: Referencia, rotulo: string) => void;
-}) {
-  const campos: Exclude<CampoEditavel, "dimensoes">[] = [
-    "pendente",
-    "anterior",
-    "pecasPorCiclo",
-    "necessaria",
-    "realizada",
-    "tempoUnitario",
-    "tempoSetup",
-  ];
-  return (
-    <div className="pagina-container">
-      <img
-        className="pagina-relatorio"
-        src={`data:image/png;base64,${imagem}`}
-        alt={`Página ${pagina.numero} do relatório`}
-      />
-      {editavel &&
-        linhas.flatMap((linha, indice) =>
-          campos.map((campo) => {
-            const ref = linha.campos[campo];
-            if (ref.pagina !== pagina.numero) return null;
-            const trecho = pagina.trechos[ref.indice];
-            if (!trecho) return null;
-            return (
-              <button
-                key={`${indice}-${campo}`}
-                type="button"
-                className="campo-overlay"
-                aria-label={`${rotulosCampo[campo]} da OP ${linha.ordem}`}
-                title={`Editar ${rotulosCampo[campo]} da OP ${linha.ordem}`}
-                style={{
-                  left: `${(trecho.x / pagina.largura) * 100}%`,
-                  top: `${((trecho.y - trecho.altura) / pagina.altura) * 100}%`,
-                  width: `${Math.max(3, (trecho.largura / pagina.largura) * 100)}%`,
-                  height: `${Math.max(2, (trecho.altura / pagina.altura) * 100)}%`,
-                }}
-                onClick={() => aoSelecionar(indice, campo)}
-              />
-            );
-          }),
-        )}
-      {editavel &&
-        linhas.map((linha, indice) => {
-          const ref = linha.camposTexto.dimensoes.find(
-            (item) =>
-              item.pagina === pagina.numero &&
-              /^\d/.test(pagina.trechos[item.indice]?.texto ?? ""),
-          );
-          if (!ref) return null;
-          const trecho = pagina.trechos[ref.indice];
-          return (
-            <button
-              key={`dim-${indice}`}
-              type="button"
-              className="campo-overlay"
-              aria-label={`Dimensões da OP ${linha.ordem}`}
-              title={`Editar dimensões da OP ${linha.ordem}`}
-              style={{
-                left: `${(trecho.x / pagina.largura) * 100}%`,
-                top: `${((trecho.y - trecho.altura) / pagina.altura) * 100}%`,
-                width: `${Math.max(3, (trecho.largura / pagina.largura) * 100)}%`,
-                height: `${Math.max(1.5, (trecho.altura / pagina.altura) * 100)}%`,
-              }}
-              onClick={() => aoSelecionar(indice, "dimensoes")}
-            />
-          );
-        })}
-      {editavel &&
-        linhas.flatMap((linha, indiceLinha) =>
-          (["ordem", "produto", "componente"] as const).flatMap((campo) =>
-            linha.camposTexto[campo].map((ref) => {
-              if (ref.pagina !== pagina.numero) return null;
-              const trecho = pagina.trechos[ref.indice];
-              if (!trecho) return null;
-              const rotulo = `${campo === "ordem" ? "Ordem de produção" : campo === "produto" ? "Produto" : "Componente"} da OP ${linha.ordem}`;
-              return (
-                <button
-                  type="button"
-                  className="campo-overlay"
-                  key={`texto-${indiceLinha}-${campo}-${ref.indice}`}
-                  aria-label={rotulo}
-                  title={`Editar ${rotulo}`}
-                  style={{
-                    left: `${(trecho.x / pagina.largura) * 100}%`,
-                    top: `${((trecho.y - trecho.altura) / pagina.altura) * 100}%`,
-                    width: `${Math.max(3, (trecho.largura / pagina.largura) * 100)}%`,
-                    height: `${Math.max(1.5, (trecho.altura / pagina.altura) * 100)}%`,
-                  }}
-                  onClick={() => aoSelecionarTexto(ref, rotulo)}
-                />
-              );
-            }),
-          ),
-        )}
-    </div>
-  );
+function PaginaReconstruida({ paginas, linhas, paginaData, aoMudarPagina, editavel, ocupado, aoConcluir, aoSelecionar, aoSelecionarTexto }: { paginas: Pagina[]; linhas: Linha[]; paginaData: number; aoMudarPagina: (indice: number) => void; editavel: boolean; ocupado: boolean; aoConcluir: (indice: number, concluida: boolean) => void; aoSelecionar: (indice: number, campo: CampoEditavel) => void; aoSelecionarTexto: (referencia: Referencia, rotulo: string) => void }) {
+  const grupos = new Map<string, { linha: Linha; indice: number }[]>();
+  linhas.forEach((linha, indice) => { const grupo = grupos.get(linha.dataEntrega) ?? []; grupo.push({ linha, indice }); grupos.set(linha.dataEntrega, grupo); });
+  const datas = Array.from(grupos.keys());
+  const data = datas[paginaData];
+  const grupo = grupos.get(data) ?? [];
+  const somar = (campo: "necessaria" | "realizada" | "saldo" | "pendente" | "anterior" | "pecasPorCiclo" | "area" | "tempoProducaoSegundos") => grupo.reduce((total, item) => total + item.linha[campo], 0);
+  const numero = (valor: number) => valor.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+  const trecho = (ref: Referencia) => paginas.find((pagina) => pagina.numero === ref.pagina)?.trechos[ref.indice];
+  const texto = (refs: Referencia[]) => refs.map((ref) => trecho(ref)?.texto ?? "").join(" ").trim();
+  const textoEditavel = (refs: Referencia[], rotulo: string) => refs.filter((ref) => trecho(ref)).map((ref) => editavel ? <button type="button" className="mapa-campo" key={`${ref.pagina}-${ref.indice}`} onClick={() => aoSelecionarTexto(ref, rotulo)} aria-label={`Editar ${rotulo}`}>{trecho(ref)?.texto} </button> : <span key={`${ref.pagina}-${ref.indice}`}>{trecho(ref)?.texto} </span>);
+  const campo = (valor: string | number, indice: number, nome: CampoEditavel) => editavel ? <button type="button" className="mapa-campo" onClick={() => aoSelecionar(indice, nome)} aria-label={`Editar ${rotulosCampo[nome]} da OP ${linhas[indice].ordem}`}>{valor}</button> : valor;
+  return <article className="mapa-pagina" aria-label="Mapa de sequenciamento">
+    <div className="mapa-topo"><div><h3>Mapa de sequenciamento</h3><p>{paginas.flatMap((pagina) => pagina.trechos).find((t) => /Referente ao período/i.test(t.texto))?.texto ?? ""}</p></div></div>
+    {datas.length > 0 ? <>
+      <div className="mapa-paginacao"><button type="button" className="secondary" disabled={paginaData === 0} onClick={() => aoMudarPagina(paginaData - 1)}>← Dia anterior</button><div><span>Página {paginaData + 1} de {datas.length}</span><strong>Entrega {data}</strong></div><button type="button" className="secondary" disabled={paginaData >= datas.length - 1} onClick={() => aoMudarPagina(paginaData + 1)}>Próximo dia →</button></div>
+      <div className="mapa-total" aria-label="Totais da data"><div><span>Ordens</span><strong>{grupo.length}</strong></div><div><span>Peças necessárias</span><strong>{numero(somar("necessaria"))}</strong></div><div><span>Peças realizadas</span><strong>{numero(somar("realizada"))}</strong></div><div><span>Saldo de peças</span><strong>{numero(somar("saldo"))}</strong></div><div><span>Tempo total de produção</span><strong>{formatarDuracao(somar("tempoProducaoSegundos"))}</strong></div></div>
+      <p className="mapa-instrucao">{editavel ? "Selecione um valor sublinhado para editar. Marcar uma ordem como concluída não altera os totais." : "Os totais incluem todas as ordens, inclusive as concluídas."}</p>
+      <div className="mapa-cartoes">{grupo.map(({linha, indice}) => <section key={indice} className={`mapa-ordem ${linha.concluida ? "mapa-ordem-concluida" : ""}`}>
+        <div className="mapa-ordem-cabecalho"><div><span>ORDEM DE PRODUÇÃO</span><strong>OP {textoEditavel(linha.camposTexto.ordem, `ordem de produção ${linha.ordem}`)}</strong></div><div className="mapa-estado">{linha.concluida && <span>Concluída</span>}{editavel && <button type="button" className="mapa-status-botao" disabled={ocupado} onClick={() => aoConcluir(indice, !linha.concluida)} aria-label={`${linha.concluida ? "Reabrir" : "Concluir"} OP ${linha.ordem}`}>{linha.concluida ? "Reabrir" : "Concluir"}</button>}</div></div>
+        <div className="mapa-ordem-conteudo"><div className="mapa-identificacao"><div><span>Produto</span><strong>{textoEditavel(linha.camposTexto.produto, `produto da OP ${linha.ordem}`)}</strong></div><div><span>Componente</span><strong>{textoEditavel(linha.camposTexto.componente, `componente da OP ${linha.ordem}`)}</strong></div><div><span>Programação / Lote</span><strong>{linha.programacao} · {linha.lote}</strong></div><div><span>Dimensões</span><strong>{campo(texto(linha.camposTexto.dimensoes) || "—", indice, "dimensoes")}</strong></div></div>
+        <dl className="mapa-dados"><div><dt>Área m²</dt><dd>{numero(linha.area)}</dd></div><div><dt>Qtd. pendente</dt><dd>{campo(numero(linha.pendente), indice, "pendente")}</dd></div><div><dt>Atv. anterior</dt><dd>{campo(numero(linha.anterior), indice, "anterior")}</dd></div><div><dt>Necessária</dt><dd>{campo(numero(linha.necessaria), indice, "necessaria")}</dd></div><div><dt>Realizada</dt><dd>{campo(numero(linha.realizada), indice, "realizada")}</dd></div><div><dt>Saldo</dt><dd>{numero(linha.saldo)}</dd></div><div><dt>Peças / ciclo</dt><dd>{campo(numero(linha.pecasPorCiclo), indice, "pecasPorCiclo")}</dd></div><div><dt>Tempo de setup</dt><dd>{campo(formatarDuracao(linha.tempoSetupSegundos), indice, "tempoSetup")}</dd></div><div><dt>Tempo por peça</dt><dd>{campo(formatarDuracao(linha.tempoUnitarioSegundos), indice, "tempoUnitario")}</dd></div><div><dt>Tempo de produção</dt><dd>{formatarDuracao(linha.tempoProducaoSegundos)}</dd></div></dl></div>
+      </section>)}</div>
+    </> : <p>Não há ordens reconhecidas neste relatório.</p>}
+  </article>;
 }
 
 function EditorCampo({

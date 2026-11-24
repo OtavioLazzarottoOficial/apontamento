@@ -18,7 +18,8 @@
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
     "db:up": "docker compose up -d --wait db",
-    "db:stop": "docker compose stop db"
+    "db:stop": "docker compose stop db",
+    "usuario:criar": "npm run env:init -w @repo/backend && node apps/backend/scripts/criar-usuario.mjs"
   },
   "devDependencies": {
     "turbo": "^2.0.0"

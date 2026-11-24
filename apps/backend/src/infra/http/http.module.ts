@@ -1,3 +1,5 @@
+import { AlterarConclusaoLinhaUseCase } from '../../domain/sequenciamento/application/usecases/alterar-conclusao-linha-usecase.ts';
+import { AlterarConclusaoLinhaController } from './controllers/alterar-conclusao-linha.controller.ts';
 import { AlterarTextoRelatorioUseCase } from '../../domain/sequenciamento/application/usecases/alterar-texto-relatorio-usecase.ts';
 import { AlterarTextoRelatorioController } from './controllers/alterar-texto-relatorio.controller.ts';
 import { ListarUsuariosUseCase } from '../../domain/auth/application/usecases/listar-usuarios-usecase.ts';
@@ -45,6 +47,7 @@ import { CryptographyModule } from '../cryptography/cryptography.module.ts';
     ObterPerfilController,
     ListarRelatoriosController,
     AlterarLinhaRelatorioController,
+    AlterarConclusaoLinhaController,
     ExportarRelatorioController,
     VisualizarRelatorioController,
     GerenciarUsuariosController,
@@ -61,6 +64,7 @@ import { CryptographyModule } from '../cryptography/cryptography.module.ts';
     AdministradorGuard,
     ListarRelatoriosUseCase,
     AlterarLinhaRelatorioUseCase,
+    AlterarConclusaoLinhaUseCase,
     AtualizarRelatorioUseCase,
     GeradorPdf,
     PermissaoExportarGuard,
