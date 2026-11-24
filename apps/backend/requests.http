@@ -1,0 +1,40 @@
+@baseUrl = http://localhost:3000
+@token = INSIRA_UM_TOKEN_LOCAL
+@relatorioId = INSIRA_O_ID_DO_RELATORIO
+
+### Entrar com uma conta criada localmente
+# @name login
+POST {{baseUrl}}/sessions
+Content-Type: application/json
+
+{
+  "email": "usuario@example.test",
+  "senha": "INSIRA_SENHA_LOCAL"
+}
+
+### Perfil da conta autenticada
+GET {{baseUrl}}/me
+Authorization: Bearer {{login.response.body.token}}
+
+### Listar relatórios compartilhados
+GET {{baseUrl}}/relatorios
+Authorization: Bearer {{login.response.body.token}}
+
+### Consultar relatório pelo ID obtido na importação ou listagem
+GET {{baseUrl}}/relatorios/{{relatorioId}}
+Authorization: Bearer {{login.response.body.token}}
+
+### Cadastrar usuário (somente administrador; cria dados)
+POST {{baseUrl}}/usuarios
+Authorization: Bearer {{login.response.body.token}}
+Content-Type: application/json
+
+{
+  "email": "novo@example.test",
+  "senha": "INSIRA_SENHA_LOCAL",
+  "podeEditar": true,
+  "podeExportar": false
+}
+
+### A importação usa POST /relatorios/importar com multipart/form-data,
+### campo arquivo contendo o PDF; requer permissão de edição e cria dados.

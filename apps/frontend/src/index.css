@@ -1,0 +1,263 @@
+@import "tailwindcss";
+:root {
+  font-family: system-ui, sans-serif;
+  color: #172033;
+  background: #f2f5f8;
+}
+body {
+  margin: 0;
+}
+a {
+  color: #155e75;
+}
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid #0891b2;
+  outline-offset: 3px;
+}
+h1 {
+  font-size: clamp(1.7rem, 3vw, 2.3rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+h2 {
+  font-size: 1.2rem;
+  font-weight: 650;
+}
+p {
+  color: #526173;
+  line-height: 1.55;
+}
+.eyebrow {
+  color: #0e7490;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.13em;
+}
+.login-panel {
+  max-width: 29rem;
+  margin: 5rem auto;
+  padding: 2.5rem;
+  background: white;
+  border: 1px solid #dce4ea;
+  border-radius: 1rem;
+  box-shadow: 0 10px 35px #1e293b0a;
+}
+.form-stack,
+.tool-card {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+label {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.45rem;
+  background: white;
+  padding: 0.65rem 0.75rem;
+  font-weight: 400;
+}
+button {
+  border-radius: 0.45rem;
+  background: #155e75;
+  color: white;
+  border: 1px solid #155e75;
+  padding: 0.65rem 1rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+button.secondary {
+  background: white;
+  color: #155e75;
+}
+.workspace {
+  padding: 3rem 0;
+}
+.workspace-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+}
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 1rem;
+}
+.tool-card {
+  align-content: start;
+  border: 1px solid #dce4ea;
+  border-radius: 0.75rem;
+  background: white;
+  padding: 1.25rem;
+}
+.tool-card p {
+  margin: 0;
+}
+.notice {
+  margin-top: 1rem;
+  border-left: 3px solid #0e7490;
+  padding: 0.75rem;
+  background: #e7f4f7;
+}
+.document {
+  margin-top: 2rem;
+}
+.document iframe {
+  width: 100%;
+  min-height: 75vh;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: white;
+}
+@media (max-width: 600px) {
+  .login-panel {
+    margin: 2rem 0;
+    padding: 1.5rem;
+  }
+  .workspace-heading {
+    flex-direction: column;
+  }
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.check input {
+  width: auto;
+}
+summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+.report-list {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+.report-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0.5rem;
+}
+.report-list span {
+  color: #64748b;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+button.report-link {
+  background: transparent;
+  border: 0;
+  color: #155e75;
+  padding: 0.4rem 0;
+  text-align: left;
+}
+.editor {
+  margin: 1.5rem 0;
+}
+.line-list {
+  display: grid;
+  gap: 0.65rem;
+}
+.line-editor {
+  display: grid;
+  grid-template-columns: 1.2fr repeat(4, minmax(6rem, 0.8fr)) 1fr auto;
+  gap: 0.7rem;
+  align-items: end;
+  background: white;
+  border: 1px solid #dce4ea;
+  border-radius: 0.6rem;
+  padding: 0.8rem;
+}
+.line-editor p {
+  font-size: 0.85rem;
+  margin: 0.2rem 0;
+}
+.line-editor label {
+  font-size: 0.8rem;
+}
+.line-editor span {
+  font-size: 0.85rem;
+}
+@media (max-width: 1000px) {
+  .line-editor {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.pagina-relatorio {
+  display: block;
+  width: 100%;
+  margin: 1rem 0;
+  border: 1px solid #cbd5e1;
+  background: white;
+  box-shadow: 0 4px 14px #0f172a14;
+  font-family: Arial, sans-serif;
+}
+.user-permissions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  border-top: 1px solid #e2e8f0;
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+.user-permissions strong {
+  flex: 1 1 12rem;
+  overflow-wrap: anywhere;
+}
+.pagina-container {
+  position: relative;
+  margin: 1rem 0;
+}
+.pagina-container .pagina-relatorio {
+  margin: 0;
+}
+.campo-overlay {
+  position: absolute;
+  padding: 0;
+  border: 1px solid #06b6d477;
+  background: transparent;
+  border-radius: 2px;
+}
+.campo-overlay:hover,
+.campo-overlay:focus-visible {
+  border-color: #0e7490;
+  background: #22d3ee55;
+}
+.modal-fundo {
+  position: fixed;
+  inset: 0;
+  background: #0f172a99;
+  display: grid;
+  place-items: center;
+  z-index: 20;
+  padding: 1rem;
+}
+.modal-campo {
+  width: min(100%, 28rem);
+  background: white;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+}
+.modal-acoes {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: end;
+}
