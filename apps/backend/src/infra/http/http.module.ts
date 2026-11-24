@@ -1,3 +1,4 @@
+import { ConfiguracaoCapacidadeController } from './controllers/configuracao-capacidade.controller.ts';
 import { AlterarConclusaoLinhaUseCase } from '../../domain/sequenciamento/application/usecases/alterar-conclusao-linha-usecase.ts';
 import { AlterarConclusaoLinhaController } from './controllers/alterar-conclusao-linha.controller.ts';
 import { AlterarTextoRelatorioUseCase } from '../../domain/sequenciamento/application/usecases/alterar-texto-relatorio-usecase.ts';
@@ -38,6 +39,7 @@ import { CryptographyModule } from '../cryptography/cryptography.module.ts';
   imports: [DatabaseModule, CryptographyModule],
   controllers: [
     ConnectionController,
+    ConfiguracaoCapacidadeController,
     AppController,
     HealthController,
     CriarSessaoController,

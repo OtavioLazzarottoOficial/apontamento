@@ -42,3 +42,7 @@ Para parar o banco local sem apagar o volume, execute `npm run db:stop`. Não us
 
 Para criar uma conta pelo Prompt de Comando (CMD), com o banco iniciado e as migrações aplicadas, execute `npm run usuario:criar` na raiz. Informe o e-mail, a senha e as permissões nas perguntas interativas. A opção de administrador cria apenas o primeiro administrador.
 
+
+## Especificação de produto
+
+A intenção do sistema e os requisitos de validação de sequenciamento estão em [openspec/specs/validacao-sequenciamento/spec.md](openspec/specs/validacao-sequenciamento/spec.md). Consulte essa especificação antes de planejar alterações nas funcionalidades.

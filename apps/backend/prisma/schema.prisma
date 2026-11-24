@@ -34,3 +34,10 @@ model Usuario {
 
   @@map("usuarios")
 }
+
+model ConfiguracaoCapacidade {
+  id                 Int @id
+  eficienciaPercentual Int @default(80) @map("eficiencia_percentual")
+
+  @@map("configuracao_capacidade")
+}

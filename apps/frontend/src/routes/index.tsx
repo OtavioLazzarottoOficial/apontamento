@@ -1,3 +1,4 @@
+import { analisarCapacidade } from "../lib/capacidade";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 
@@ -102,6 +103,7 @@ async function requisicao<T>(path: string, init: RequestInit): Promise<T> {
 function Home() {
   const [token, setToken] = useState("");
   const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [eficiencia, setEficiencia] = useState<number | null>(null);
   const [relatorios, setRelatorios] = useState<Resumo[]>([]);
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -120,6 +122,18 @@ function Home() {
   } | null>(null);
   const [mensagem, setMensagem] = useState("");
   const [ocupado, setOcupado] = useState(false);
+
+  useEffect(() => {
+    if (!token) return;
+    const abortador = new AbortController();
+    const atualizar = () => {
+      void requisicao<{ eficienciaPercentual: number }>("/configuracao/capacidade", { headers: { Authorization: `Bearer ${token}` }, signal: abortador.signal })
+        .then((config) => setEficiencia(config.eficienciaPercentual))
+        .catch(() => { if (!abortador.signal.aborted) setEficiencia(null); });
+    };
+    const intervalo = window.setInterval(atualizar, 30000);
+    return () => { abortador.abort(); window.clearInterval(intervalo); };
+  }, [token]);
 
   async function executar(acao: () => Promise<void>) {
     setOcupado(true);
@@ -148,6 +162,8 @@ function Home() {
       const perfilAtual = await requisicao<Perfil>("/me", {
         headers: { Authorization: `Bearer ${resultado.token}` },
       });
+      const config = await requisicao<{ eficienciaPercentual: number }>("/configuracao/capacidade", { headers: { Authorization: `Bearer ${resultado.token}` } });
+      setEficiencia(config.eficienciaPercentual);
       setPerfil(perfilAtual);
       setToken(resultado.token);
       const lista = await requisicao<{ relatorios: Resumo[] }>("/relatorios", {
@@ -282,6 +298,7 @@ function Home() {
           onClick={() => {
             setToken("");
             setPerfil(null);
+            setEficiencia(null);
             setRelatorios([]);
             setRelatorio(null);
             setId("");
@@ -353,6 +370,7 @@ function Home() {
       </section>
       </details>
       {perfil?.papel === "ADMINISTRADOR" && !relatorio && <CadastroUsuario token={token} />}
+      {perfil?.papel === "ADMINISTRADOR" && eficiencia !== null && <ConfiguracaoCapacidade token={token} eficiencia={eficiencia} aoSalvar={setEficiencia} />}
       {mensagem && (
         <p role="status" className="notice">
           {mensagem}
@@ -371,7 +389,7 @@ function Home() {
           </nav>
           {tela === "ordens" && <ResumoOrdens linhas={relatorio.conteudo.linhas} busca={busca} aoBuscar={setBusca} />}
           {tela === "edicao" && (perfil?.papel === "ADMINISTRADOR" || perfil?.podeEditar) && <section className="report-section"><EdicaoLinhas relatorio={relatorio} token={token} aoSalvar={setRelatorio} /></section>}
-          {tela === "mapa" && <section className="report-section report-pages"><PaginaReconstruida paginas={relatorio.conteudo.paginas} linhas={relatorio.conteudo.linhas} paginaData={paginaData} aoMudarPagina={setPaginaData} editavel={perfil?.papel === "ADMINISTRADOR" || !!perfil?.podeEditar} ocupado={ocupado} aoConcluir={(indice, concluida) => void alterarConclusao(indice, concluida)} aoSelecionar={(indice, campo) => setCampoSelecionado({ indice, campo })} aoSelecionarTexto={(referencia, rotulo) => setTextoSelecionado({ referencia, rotulo })} /></section>}
+          {tela === "mapa" && <section className="report-section report-pages"><PaginaReconstruida eficiencia={eficiencia} paginas={relatorio.conteudo.paginas} linhas={relatorio.conteudo.linhas} paginaData={paginaData} aoMudarPagina={setPaginaData} editavel={perfil?.papel === "ADMINISTRADOR" || !!perfil?.podeEditar} ocupado={ocupado} aoConcluir={(indice, concluida) => void alterarConclusao(indice, concluida)} aoSelecionar={(indice, campo) => setCampoSelecionado({ indice, campo })} aoSelecionarTexto={(referencia, rotulo) => setTextoSelecionado({ referencia, rotulo })} /></section>}
           {campoSelecionado && (
             <EditorCampo
               relatorio={relatorio}
@@ -411,6 +429,20 @@ function ResumoOrdens({ linhas, busca, aoBuscar }: { linhas: Linha[]; busca: str
       {filtradas.map((linha, indice) => <tr key={indice}><th scope="row">{linha.ordem || "—"}</th><td>{linha.dataEntrega || "—"}</td><td>{linha.lote || "—"}</td><td>{linha.programacao || "—"}</td><td>{linha.necessaria.toLocaleString("pt-BR")}</td><td>{linha.realizada.toLocaleString("pt-BR")}</td><td>{linha.saldo.toLocaleString("pt-BR")}</td><td>{formatarDuracao(linha.tempoProducaoSegundos)}</td></tr>)}
     </tbody></table>{filtradas.length === 0 && <p className="table-empty">{linhas.length ? "Nenhuma ordem encontrada para esta busca." : "Nenhuma ordem identificada neste relatório."}</p>}</div>
   </section>;
+}
+
+function ConfiguracaoCapacidade({ token, eficiencia, aoSalvar }: { token: string; eficiencia: number; aoSalvar: (valor: number) => void }) {
+  const [valor, setValor] = useState(String(eficiencia));
+  const [mensagem, setMensagem] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  async function salvar(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault(); setOcupado(true); setMensagem("");
+    try {
+      const resultado = await requisicao<{ eficienciaPercentual: number }>("/configuracao/capacidade", { method: "PUT", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ eficienciaPercentual: Number(valor) }) });
+      aoSalvar(resultado.eficienciaPercentual); setMensagem("Eficiência global atualizada.");
+    } catch (erro) { setMensagem(erro instanceof Error ? erro.message : "Não foi possível salvar a configuração."); } finally { setOcupado(false); }
+  }
+  return <details className="tool-card"><summary>Configurar eficiência da máquina</summary><form className="form-stack" onSubmit={salvar}><p>O percentual é global e afeta todos os relatórios, inclusive os existentes. A jornada base é de 8h48.</p><label>Eficiência (%)<input type="number" min="1" max="100" step="1" required value={valor} onChange={(evento) => setValor(evento.target.value)} /></label><button disabled={ocupado}>Salvar eficiência</button>{mensagem && <p role="status">{mensagem}</p>}</form></details>;
 }
 
 function CadastroUsuario({ token }: { token: string }) {
@@ -720,12 +752,13 @@ const rotulosCampo: Record<CampoEditavel, string> = {
   dimensoes: "Dimensões",
 };
 
-function PaginaReconstruida({ paginas, linhas, paginaData, aoMudarPagina, editavel, ocupado, aoConcluir, aoSelecionar, aoSelecionarTexto }: { paginas: Pagina[]; linhas: Linha[]; paginaData: number; aoMudarPagina: (indice: number) => void; editavel: boolean; ocupado: boolean; aoConcluir: (indice: number, concluida: boolean) => void; aoSelecionar: (indice: number, campo: CampoEditavel) => void; aoSelecionarTexto: (referencia: Referencia, rotulo: string) => void }) {
+function PaginaReconstruida({ eficiencia, paginas, linhas, paginaData, aoMudarPagina, editavel, ocupado, aoConcluir, aoSelecionar, aoSelecionarTexto }: { eficiencia: number | null; paginas: Pagina[]; linhas: Linha[]; paginaData: number; aoMudarPagina: (indice: number) => void; editavel: boolean; ocupado: boolean; aoConcluir: (indice: number, concluida: boolean) => void; aoSelecionar: (indice: number, campo: CampoEditavel) => void; aoSelecionarTexto: (referencia: Referencia, rotulo: string) => void }) {
   const grupos = new Map<string, { linha: Linha; indice: number }[]>();
   linhas.forEach((linha, indice) => { const grupo = grupos.get(linha.dataEntrega) ?? []; grupo.push({ linha, indice }); grupos.set(linha.dataEntrega, grupo); });
   const datas = Array.from(grupos.keys());
   const data = datas[paginaData];
   const grupo = grupos.get(data) ?? [];
+  const capacidade = eficiencia === null ? null : analisarCapacidade(grupo.map(({ linha }) => linha), eficiencia);
   const somar = (campo: "necessaria" | "realizada" | "saldo" | "pendente" | "anterior" | "pecasPorCiclo" | "area" | "tempoProducaoSegundos") => grupo.reduce((total, item) => total + item.linha[campo], 0);
   const numero = (valor: number) => valor.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
   const trecho = (ref: Referencia) => paginas.find((pagina) => pagina.numero === ref.pagina)?.trechos[ref.indice];
@@ -737,6 +770,8 @@ function PaginaReconstruida({ paginas, linhas, paginaData, aoMudarPagina, editav
     {datas.length > 0 ? <>
       <div className="mapa-paginacao"><button type="button" className="secondary" disabled={paginaData === 0} onClick={() => aoMudarPagina(paginaData - 1)}>← Dia anterior</button><div><span>Página {paginaData + 1} de {datas.length}</span><strong>Entrega {data}</strong></div><button type="button" className="secondary" disabled={paginaData >= datas.length - 1} onClick={() => aoMudarPagina(paginaData + 1)}>Próximo dia →</button></div>
       <div className="mapa-total" aria-label="Totais da data"><div><span>Ordens</span><strong>{grupo.length}</strong></div><div><span>Peças necessárias</span><strong>{numero(somar("necessaria"))}</strong></div><div><span>Peças realizadas</span><strong>{numero(somar("realizada"))}</strong></div><div><span>Saldo de peças</span><strong>{numero(somar("saldo"))}</strong></div><div><span>Tempo total de produção</span><strong>{formatarDuracao(somar("tempoProducaoSegundos"))}</strong></div></div>
+      {!capacidade && <p role="alert">Não foi possível obter a eficiência global. A análise de capacidade está indisponível.</p>}
+      {capacidade && <div className={`capacidade-resumo ${capacidade.excesso > 0 ? "capacidade-excedida" : "capacidade-disponivel"}`} role="status"><strong>{capacidade.excesso > 0 ? "Capacidade excedida" : "Dentro da capacidade planejada"}</strong><p>Jornada: 08:48:00 · Eficiência: {eficiencia}% · Capacidade: {formatarDuracao(capacidade.capacidade)}</p><p>Peças: {formatarDuracao(capacidade.tempoPecas)} + setup: {formatarDuracao(capacidade.tempoSetup)} = carga planejada: {formatarDuracao(capacidade.carga)}{capacidade.excesso > 0 ? ` · Excesso: ${formatarDuracao(capacidade.excesso)}` : ""}</p><small>Cálculo com quantidades necessárias de todas as ordens do dia, incluindo concluídas. A eficiência é global e se aplica também a relatórios existentes.</small></div>}
       <p className="mapa-instrucao">{editavel ? "Selecione um valor sublinhado para editar. Marcar uma ordem como concluída não altera os totais." : "Os totais incluem todas as ordens, inclusive as concluídas."}</p>
       <div className="mapa-cartoes">{grupo.map(({linha, indice}) => <section key={indice} className={`mapa-ordem ${linha.concluida ? "mapa-ordem-concluida" : ""}`}>
         <div className="mapa-ordem-cabecalho"><div><span>ORDEM DE PRODUÇÃO</span><strong>OP {textoEditavel(linha.camposTexto.ordem, `ordem de produção ${linha.ordem}`)}</strong></div><div className="mapa-estado">{linha.concluida && <span>Concluída</span>}{editavel && <button type="button" className="mapa-status-botao" disabled={ocupado} onClick={() => aoConcluir(indice, !linha.concluida)} aria-label={`${linha.concluida ? "Reabrir" : "Concluir"} OP ${linha.ordem}`}>{linha.concluida ? "Reabrir" : "Concluir"}</button>}</div></div>

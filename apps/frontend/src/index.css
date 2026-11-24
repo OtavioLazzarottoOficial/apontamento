@@ -338,3 +338,7 @@ button.mapa-status-botao { white-space: nowrap; padding: .3rem .45rem; font-size
 .mapa-dados dd { margin: .2rem 0 0; color: #173b49; font-size: .9rem; font-weight: 700; overflow-wrap: anywhere; }
 .mapa-ordem-concluida .mapa-ordem-conteudo, .mapa-ordem-concluida .mapa-ordem-cabecalho > div:first-child { opacity: .65; text-decoration: line-through; }
 @media (max-width: 600px) { .mapa-paginacao { flex-wrap: wrap; } .mapa-paginacao > div { order: -1; width: 100%; } .mapa-paginacao button { flex: 1; } .report-nav button { flex: 1 1 100%; } }
+.capacidade-resumo { margin: 1rem 0; padding: 1rem; border-radius: .6rem; border: 1px solid #b8d8c9; background: #eff9f2; color: #174b35; }
+.capacidade-resumo p { margin: .3rem 0; color: inherit; }
+.capacidade-resumo small { display: block; margin-top: .5rem; }
+.capacidade-excedida { color: #8b2525; border-color: #eab8b8; background: #fff2f2; }

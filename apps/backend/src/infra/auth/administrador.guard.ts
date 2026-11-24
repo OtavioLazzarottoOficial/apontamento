@@ -16,7 +16,7 @@ export class AdministradorGuard implements CanActivate {
     const usuario = await this.usuarios.buscarPorId(request.user.sub);
     if (!usuario || usuario.papel !== 'ADMINISTRADOR') {
       throw new ForbiddenException(
-        'Somente administradores podem cadastrar usuários.',
+        'Somente administradores podem realizar esta ação.',
       );
     }
     return true;
