@@ -38,7 +38,7 @@
     "env:init": "node scripts/setup-env.mjs",
     "predev": "npm run env:init && npm run prisma:generate",
     "dev": "nest start --watch",
-    "admin:init": "node scripts/criar-admin-inicial.mjs"
+    "admin:init": "node scripts/initialize-admin.mjs"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.2.0",

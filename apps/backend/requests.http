@@ -24,6 +24,10 @@ Authorization: Bearer {{login.response.body.token}}
 GET {{baseUrl}}/relatorios/{{relatorioId}}
 Authorization: Bearer {{login.response.body.token}}
 
+### Visualizar o PDF original (usuário autenticado; não inclui edições)
+GET {{baseUrl}}/relatorios/{{relatorioId}}/original
+Authorization: Bearer {{login.response.body.token}}
+
 ### Cadastrar usuário (somente administrador; cria dados)
 POST {{baseUrl}}/usuarios
 Authorization: Bearer {{login.response.body.token}}
@@ -38,3 +42,62 @@ Content-Type: application/json
 
 ### A importação usa POST /relatorios/importar com multipart/form-data,
 ### campo arquivo contendo o PDF; requer permissão de edição e cria dados.
+
+@machineId = INSIRA_O_ID_DA_MAQUINA
+
+### Listar máquinas (usuário autenticado)
+GET {{baseUrl}}/maquinas
+Authorization: Bearer {{login.response.body.token}}
+
+### Cadastrar máquina (usuário com permissão de edição; cria dados)
+POST {{baseUrl}}/maquinas
+Authorization: Bearer {{login.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "Furadeira manual",
+  "pdfTitle": "PO Furadeira Nanxing Mod. NCB2412S B"
+}
+
+### Alterar máquina (usuário com permissão de edição)
+PATCH {{baseUrl}}/maquinas/{{machineId}}
+Authorization: Bearer {{login.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "Furadeira manual",
+  "pdfTitle": "PO Furadeira Nanxing Mod. NCB2412S B"
+}
+
+### Vincular relatório existente (use a versão atual obtida no GET)
+PATCH {{baseUrl}}/relatorios/{{relatorioId}}/maquina
+Authorization: Bearer {{login.response.body.token}}
+Content-Type: application/json
+
+{
+  "machineId": "{{machineId}}",
+  "expectedVersion": 1
+}
+
+### A importação exige o campo multipart machineId da máquina cadastrada,
+### além do campo arquivo contendo o PDF.
+
+### Desvincular a máquina sem excluir o relatório (use a versão atual)
+PATCH {{baseUrl}}/relatorios/{{relatorioId}}/maquina
+Authorization: Bearer {{login.response.body.token}}
+Content-Type: application/json
+
+{
+  "machineId": null,
+  "expectedVersion": 1
+}
+
+### Remover relatório permanentemente (usuário com permissão de edição)
+### Use a versão atual obtida em GET /relatorios; a remoção afeta todos os usuários.
+DELETE {{baseUrl}}/relatorios/{{relatorioId}}
+Authorization: Bearer {{login.response.body.token}}
+Content-Type: application/json
+
+{
+  "expectedVersion": 1
+}

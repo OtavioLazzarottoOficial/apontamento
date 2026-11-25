@@ -1,78 +1,99 @@
-import { ConfiguracaoCapacidadeController } from './controllers/configuracao-capacidade.controller.ts';
-import { AlterarConclusaoLinhaUseCase } from '../../domain/sequenciamento/application/usecases/alterar-conclusao-linha-usecase.ts';
-import { AlterarConclusaoLinhaController } from './controllers/alterar-conclusao-linha.controller.ts';
-import { AlterarTextoRelatorioUseCase } from '../../domain/sequenciamento/application/usecases/alterar-texto-relatorio-usecase.ts';
-import { AlterarTextoRelatorioController } from './controllers/alterar-texto-relatorio.controller.ts';
-import { ListarUsuariosUseCase } from '../../domain/auth/application/usecases/listar-usuarios-usecase.ts';
-import { AlterarPermissoesUseCase } from '../../domain/auth/application/usecases/alterar-permissoes-usecase.ts';
-import { GerenciarUsuariosController } from './controllers/gerenciar-usuarios.controller.ts';
-import { VisualizarRelatorioController } from './controllers/visualizar-relatorio.controller.ts';
-import { PermissaoExportarGuard } from '../auth/permissao-exportar.guard.ts';
-import { GeradorPdf } from '../pdf/gerador-pdf.ts';
-import { ExportarRelatorioController } from './controllers/exportar-relatorio.controller.ts';
-import { AlterarLinhaRelatorioUseCase } from '../../domain/sequenciamento/application/usecases/alterar-linha-relatorio-usecase.ts';
-import { AtualizarRelatorioUseCase } from '../../domain/sequenciamento/application/usecases/atualizar-relatorio-usecase.ts';
-import { AlterarLinhaRelatorioController } from './controllers/alterar-linha-relatorio.controller.ts';
-import { ListarRelatoriosUseCase } from '../../domain/sequenciamento/application/usecases/listar-relatorios-usecase.ts';
-import { ListarRelatoriosController } from './controllers/listar-relatorios.controller.ts';
-import { ObterPerfilController } from './controllers/obter-perfil.controller.ts';
-import { CadastrarUsuarioUseCase } from '../../domain/auth/application/usecases/cadastrar-usuario-usecase.ts';
-import { AdministradorGuard } from '../auth/administrador.guard.ts';
-import { CadastrarUsuarioController } from './controllers/cadastrar-usuario.controller.ts';
-import { ObterRelatorioUseCase } from '../../domain/sequenciamento/application/usecases/obter-relatorio-usecase.ts';
-import { UsuarioExistenteGuard } from '../auth/usuario-existente.guard.ts';
-import { ObterRelatorioController } from './controllers/obter-relatorio.controller.ts';
-import { CriarRelatorioUseCase } from '../../domain/sequenciamento/application/usecases/criar-relatorio-usecase.ts';
-import { ExtratorPdf } from '../pdf/extrator-pdf.ts';
-import { PermissaoEditarGuard } from '../auth/permissao-editar.guard.ts';
-import { ImportarRelatorioController } from './controllers/importar-relatorio.controller.ts';
-import { CriarSessaoController } from './controllers/criar-sessao.controller.ts';
-import { AutenticarUsuarioUseCase } from '../../domain/auth/application/usecases/autenticar-usuario-usecase.ts';
+import { DeleteReportController } from './controllers/delete-report.controller.ts';
+import { DeleteReportUseCase } from '../../domain/sequencing/application/usecases/delete-report-usecase.ts';
+import { AssociateReportMachineController } from './controllers/associate-report-machine.controller.ts';
+import { MachinesController } from './controllers/machines.controller.ts';
+import { ManageMachinesUseCase } from '../../domain/production/application/usecases/manage-machines-usecase.ts';
+import { CapacityConfigurationController } from './controllers/capacity-configuration.controller.ts';
+import { UpdateLineCompletionUseCase } from '../../domain/sequencing/application/usecases/update-line-completion-usecase.ts';
+import { UpdateLineCompletionController } from './controllers/update-line-completion.controller.ts';
+import { UpdateReportTextUseCase } from '../../domain/sequencing/application/usecases/update-report-text-usecase.ts';
+import { UpdateReportTextController } from './controllers/update-report-text.controller.ts';
+import { ListUsersUseCase } from '../../domain/auth/application/usecases/list-users-usecase.ts';
+import { UpdatePermissionsUseCase } from '../../domain/auth/application/usecases/update-permissions-usecase.ts';
+import { ManageUsersController } from './controllers/manage-users.controller.ts';
+import { PreviewReportController } from './controllers/preview-report.controller.ts';
+import { ExportPermissionGuard } from '../auth/export-permission.guard.ts';
+import { PdfGenerator } from '../pdf/pdf-generator.ts';
+import { ExportReportController } from './controllers/export-report.controller.ts';
+import { UpdateReportLineUseCase } from '../../domain/sequencing/application/usecases/update-report-line-usecase.ts';
+import { UpdateReportUseCase } from '../../domain/sequencing/application/usecases/update-report-usecase.ts';
+import { UpdateReportLineController } from './controllers/update-report-line.controller.ts';
+import { ListReportsUseCase } from '../../domain/sequencing/application/usecases/list-reports-usecase.ts';
+import { ListReportsController } from './controllers/list-reports.controller.ts';
+import { GetProfileController } from './controllers/get-profile.controller.ts';
+import { RegisterUserUseCase } from '../../domain/auth/application/usecases/register-user-usecase.ts';
+import { AdministratorGuard } from '../auth/administrator.guard.ts';
+import { RegisterUserController } from './controllers/register-user.controller.ts';
+import { GetReportUseCase } from '../../domain/sequencing/application/usecases/get-report-usecase.ts';
+import { ExistingUserGuard } from '../auth/existing-user.guard.ts';
+import { GetReportController } from './controllers/get-report.controller.ts';
+import { CreateReportUseCase } from '../../domain/sequencing/application/usecases/create-report-usecase.ts';
+import { PdfExtractor } from '../pdf/pdf-extractor.ts';
+import { EditPermissionGuard } from '../auth/edit-permission.guard.ts';
+import { ImportReportController } from './controllers/import-report.controller.ts';
+import { CreateSessionController } from './controllers/create-session.controller.ts';
+import { AuthenticateUserUseCase } from '../../domain/auth/application/usecases/authenticate-user-usecase.ts';
 import { ConnectionController } from './connection.controller.ts';
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../database/database.module.ts';
 import { AppController } from './app.controller.ts';
 import { HealthController } from './controllers/health.controller.ts';
 import { CryptographyModule } from '../cryptography/cryptography.module.ts';
+import { GetCapacityConfigurationUseCase } from '../../domain/production/application/usecases/get-capacity-configuration-usecase.ts';
+import { UpdateCapacityConfigurationUseCase } from '../../domain/production/application/usecases/update-capacity-configuration-usecase.ts';
+import { PdfReportPageSummaryUpdater } from '../pdf/pdf-report-page-summary-updater.ts';
+import { ReportDocumentEditor } from '../../domain/sequencing/application/services/report-document-editor.ts';
+import { PdfReportDocumentEditor } from '../pdf/pdf-report-document-editor.ts';
+import { OriginalReportPdfController } from './controllers/original-report-pdf.controller.ts';
 
 @Module({
   imports: [DatabaseModule, CryptographyModule],
   controllers: [
+    DeleteReportController,
+    OriginalReportPdfController,
+    AssociateReportMachineController,
+    MachinesController,
     ConnectionController,
-    ConfiguracaoCapacidadeController,
+    CapacityConfigurationController,
     AppController,
     HealthController,
-    CriarSessaoController,
-    ImportarRelatorioController,
-    ObterRelatorioController,
-    CadastrarUsuarioController,
-    ObterPerfilController,
-    ListarRelatoriosController,
-    AlterarLinhaRelatorioController,
-    AlterarConclusaoLinhaController,
-    ExportarRelatorioController,
-    VisualizarRelatorioController,
-    GerenciarUsuariosController,
-    AlterarTextoRelatorioController,
+    CreateSessionController,
+    ImportReportController,
+    GetReportController,
+    RegisterUserController,
+    GetProfileController,
+    ListReportsController,
+    UpdateReportLineController,
+    UpdateLineCompletionController,
+    ExportReportController,
+    PreviewReportController,
+    ManageUsersController,
+    UpdateReportTextController,
   ],
   providers: [
-    AutenticarUsuarioUseCase,
-    CriarRelatorioUseCase,
-    ExtratorPdf,
-    PermissaoEditarGuard,
-    UsuarioExistenteGuard,
-    ObterRelatorioUseCase,
-    CadastrarUsuarioUseCase,
-    AdministradorGuard,
-    ListarRelatoriosUseCase,
-    AlterarLinhaRelatorioUseCase,
-    AlterarConclusaoLinhaUseCase,
-    AtualizarRelatorioUseCase,
-    GeradorPdf,
-    PermissaoExportarGuard,
-    ListarUsuariosUseCase,
-    AlterarPermissoesUseCase,
-    AlterarTextoRelatorioUseCase,
+    DeleteReportUseCase,
+    ManageMachinesUseCase,
+    PdfReportPageSummaryUpdater,
+    { provide: ReportDocumentEditor, useClass: PdfReportDocumentEditor },
+    GetCapacityConfigurationUseCase,
+    UpdateCapacityConfigurationUseCase,
+    AuthenticateUserUseCase,
+    CreateReportUseCase,
+    PdfExtractor,
+    EditPermissionGuard,
+    ExistingUserGuard,
+    GetReportUseCase,
+    RegisterUserUseCase,
+    AdministratorGuard,
+    ListReportsUseCase,
+    UpdateReportLineUseCase,
+    UpdateLineCompletionUseCase,
+    UpdateReportUseCase,
+    PdfGenerator,
+    ExportPermissionGuard,
+    ListUsersUseCase,
+    UpdatePermissionsUseCase,
+    UpdateReportTextUseCase,
   ],
 })
 export class HttpModule {}

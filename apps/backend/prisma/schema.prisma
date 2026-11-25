@@ -9,35 +9,43 @@ datasource db {
   provider = "postgresql"
 }
 
-// Adicione modelos somente ao implementar as funcionalidades do sistema.
-
-model RelatorioSequenciamento {
+model SequencingReport {
   id       String @id
-  conteudo Json
-  versao   Int
+  content  Json   @map("conteudo")
+  version  Int    @map("versao")
 
   @@map("relatorios_sequenciamento")
 }
 
-enum PapelUsuario {
+enum UserRole {
   ADMINISTRADOR
   USUARIO
+
+  @@map("PapelUsuario")
 }
 
-model Usuario {
-  id              String       @id
-  email           String       @unique
-  senhaHash       String       @map("senha_hash")
-  papel           PapelUsuario
-  podeEditar      Boolean      @default(false) @map("pode_editar")
-  podeExportar    Boolean      @default(false) @map("pode_exportar")
+model User {
+  id           String   @id
+  email        String   @unique
+  passwordHash String   @map("senha_hash")
+  role         UserRole @map("papel")
+  canEdit      Boolean  @default(false) @map("pode_editar")
+  canExport    Boolean  @default(false) @map("pode_exportar")
 
   @@map("usuarios")
 }
 
-model ConfiguracaoCapacidade {
-  id                 Int @id
-  eficienciaPercentual Int @default(80) @map("eficiencia_percentual")
+model CapacityConfiguration {
+  id                   Int @id
+  efficiencyPercentage Int @default(80) @map("eficiencia_percentual")
 
   @@map("configuracao_capacidade")
+}
+
+model Machine {
+  id String @id
+  name String
+  pdfTitle String @map("pdf_title")
+
+  @@map("machines")
 }

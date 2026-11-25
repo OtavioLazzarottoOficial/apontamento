@@ -27,9 +27,29 @@ O sistema DEVE permitir importar o PDF recebido do sistema externo e identificar
 - **QUANDO** o supervisor importar o documento
 - **ENTÃO** o sistema deve apresentar as ordens identificadas e seus dados para conferência.
 
+### Requirement: Conferir o PDF original
+
+O usuário autenticado DEVE poder visualizar o PDF originalmente enviado junto ao mapa de sequenciamento, para comparar as informações. O documento original não incorpora edições feitas no sistema. Quando o arquivo original não estiver disponível, a interface deve informar essa condição.
+
+### Requirement: Localizar e remover relatórios compartilhados
+
+O usuário DEVE poder buscar relatórios pelo nome e filtrá-los por máquina, mês e dia das datas de entrega presentes nas ordens. A listagem deve dividir resultados em páginas e manter relatórios sem máquina acessíveis. Usuários autorizados a editar podem remover um relatório compartilhado após confirmação explícita; a remoção inclui o PDF original e as alterações e afeta todos os usuários. O sistema deve rejeitar a remoção quando a versão mudou desde a listagem.
+
+Na visão geral, as datas disponíveis devem ser selecionadas por mês e dia, mantendo a escolha de relatório para máquinas com sequenciamentos sobrepostos.
+
+### Requirement: Organizar sequenciamentos por máquina
+
+Usuários autenticados podem consultar as máquinas e usuários com permissão de edição podem cadastrá-las e alterá-las pelo nome. Para importar, o usuário seleciona primeiro uma máquina cadastrada e depois o PDF a vincular. Também é possível vincular relatórios existentes, respeitando o controle de versão.
+
+Usuários com permissão de edição podem desvincular um relatório da máquina sem excluir o relatório ou o PDF; o relatório continua acessível na lista compartilhada para ser vinculado novamente. A alteração é compartilhada e respeita o controle de versão. Também é possível limpar o arquivo escolhido antes da importação.
+
+### Requirement: Consultar a área do setor por data
+
+O sistema DEVE mostrar a soma das áreas planejadas das máquinas por data de entrega. Quando uma máquina tiver vários sequenciamentos para a data, o usuário escolhe qual utilizar; os documentos não são somados automaticamente. Se alguma máquina não tiver sequenciamento para a data ou aguardar seleção, o sistema deve indicar que o total está incompleto. As áreas incluem ordens concluídas, conforme a regra vigente do mapa.
+
 ### Requirement: Organizar a conferência por data
 
-O sistema DEVE organizar as ordens pela data de entrega identificada no PDF e permitir navegar entre os dias. A representação visual não precisa copiar as cores do documento, mas deve preservar a organização e as informações necessárias à análise.
+O sistema DEVE organizar as ordens pela data de entrega identificada no PDF e permitir navegar entre os dias. O mapa deve apresentar somente as ordens da data selecionada, em uma tabela semelhante à do PDF, mantendo editáveis os campos autorizados e disponíveis os indicadores e a marcação de conclusão. Não é necessário reproduzir exatamente as cores ou mostrar a página inteira do PDF.
 
 #### Scenario: Navegação entre dias
 
@@ -46,6 +66,16 @@ O sistema DEVE apresentar, para cada ordem reconhecida, as informações necess�
 - **DADO** um usuário com permissão de edição e uma ordem importada
 - **QUANDO** ele corrigir uma quantidade ou tempo permitido e salvar
 - **ENTÃO** o sistema deve preservar a alteração e atualizar os cálculos aplicáveis, respeitando o controle de versão.
+
+### Requirement: Consultar a área planejada por dia
+
+O mapa de sequenciamento DEVE apresentar a área total planejada em metros quadrados para a data selecionada, somando a área das linhas dessa data, inclusive as marcadas como concluídas. O total acompanha as alterações salvas nas linhas e é apresentado com duas casas decimais.
+
+#### Scenario: Soma da área do dia
+
+- **DADO** um dia com quatro ordens cujas áreas somam 40 m²
+- **QUANDO** o supervisor selecionar esse dia no mapa
+- **ENTÃO** o total exibido deve ser 40,00 m², sem incluir ordens de outras datas.
 
 ### Requirement: Acompanhar a conclusão de uma ordem
 
@@ -116,7 +146,18 @@ O sistema DEVE permitir que um administrador altere o percentual de eficiência 
 
 ## Registro de implementação
 
+- **2026-11-24 22:10 (America/Sao_Paulo) — Implementado:** associação na importação passou a exigir seleção manual de máquina, seguida da escolha do PDF; cadastro de máquina disponível apenas com nome. Essa decisão substitui a identificação automática anterior.
+- **2026-11-24 22:07 (America/Sao_Paulo) — Implementado:** limpeza do PDF selecionado antes de importar, desvinculação do relatório pela visão geral ou pelo relatório aberto e acesso direto à exclusão permanente no relatório. Validação visual depende do usuário.
+- **2026-11-24 22:02 (America/Sao_Paulo) — Implementado:** substituída a imagem da página do PDF por uma tabela editável gerada pelo sistema, com as colunas do modelo e apenas as ordens da data escolhida. A visualização separada do PDF original continua disponível. Validação visual depende do usuário.
+- **2026-11-24 21:55 (America/Sao_Paulo) — Implementado:** mapa exibe as páginas renderizadas a partir do PDF, incluindo cores, com campos editáveis posicionados sobre elas; resumo por data e acompanhamento de conclusão continuam disponíveis. O resumo da serraria mantém os valores do documento original, pois o recálculo permanece pendente. Validação visual depende do usuário.
+- **2026-11-24 21:46 (America/Sao_Paulo) — Implementado:** filtros de relatórios por nome, máquina, mês e dia de entrega, paginação e remoção permanente com confirmação, permissão de edição e controle de versão. A visão geral seleciona mês e dia e usa resumos por relatório, sem baixar todos os documentos. Validação visual depende do usuário.
+- **2026-11-24 21:38 (America/Sao_Paulo) — Implementado:** visualização autenticada do PDF original ao lado do mapa; o arquivo enviado permanece inalterado pelas edições no sistema. Conferência automatizada das 24 ordens e respectivas datas no PDF de referência; outros PDFs e a validação visual permanecem pendentes.
+- **2026-11-24 21:29 (America/Sao_Paulo) — Implementado:** cadastro e edição de máquinas, associação automática pelo título do PDF ou seleção manual, vínculo de relatórios existentes e visão da área planejada por data. Seleções de relatórios sobrepostos são locais à visualização; não são persistidas. Identificação automática verificada no PDF de referência; outros modelos precisam de validação. Migration testada em PostgreSQL isolado; validação visual depende do usuário.
+- **2026-11-24 21:18 (America/Sao_Paulo) — Implementado:** login centralizado sem menu público; navegação autenticada para sequenciamentos e, para administradores, administração de usuários e eficiência. Alternar as seções mantém o relatório aberto durante a sessão; validação visual depende do usuário.
+- **2026-11-24 21:13 (America/Sao_Paulo) — Implementado:** área de trabalho ampliada para utilizar a largura disponível da tela, com margens adaptáveis; validação visual depende do usuário. A organização por máquina permanece em definição.
+- **2026-11-24 21:05 (America/Sao_Paulo) — Implementado:** área total planejada no mapa por data, somando a área das linhas do dia selecionado, inclusive as concluídas; a apresentação usa duas casas decimais.
 - **2026-11-24 10:21 (America/Sao_Paulo) — Implementado:** comparação da capacidade planejada diária com a jornada de 8h48 e eficiência global. A carga é calculada com quantidade necessária × tempo por peça mais setup, usando todas as ordens do dia, inclusive concluídas. O excesso é sinalizado; peças e setup são apresentados separadamente. A análise usa as informações importadas ou editadas, sem alterar os totais persistidos.
 - **2026-11-24 10:21 (America/Sao_Paulo) — Implementado:** configuração global persistida de eficiência, acessível a usuários autenticados e alterável apenas por administrador. Padrão de 80%; alterações aplicam-se a todos os relatórios, inclusive existentes. A tela atualiza a configuração periodicamente.
 - **2026-11-24 10:21 (America/Sao_Paulo) — Pendente:** limite separado para setup excessivo e regras de carga restante ainda dependem de definição; a funcionalidade de prazos por setor foi explicitamente adiada pelo usuário. A exportação permanece bloqueada pela regra da serraria.
 
+- **2026-11-24 20:08 (America/Sao_Paulo) — Refatoração técnica:** fluxo de configuração de capacidade separado em domínio, casos de uso, contrato e persistência; nomes internos padronizados progressivamente e lógica de apresentação de PDF deslocada para infraestrutura. Contratos HTTP e formato persistido preservados; permanece pendente a separação completa do conteúdo do PDF do modelo de domínio.

@@ -71,3 +71,12 @@ Pendentes para implementação: detalhes da administração de contas e permiss�
 - O m² de cada linha é comprimento × largura × quantidade; comprimento e largura estão em milímetros e o resultado é arredondado para duas casas decimais.
 - O resumo da serraria deve ser recalculado; o usuário ainda fornecerá a regra de identificação e cálculo dos materiais e bitolas.
 
+### Evolução solicitada: organização por máquina
+
+- A empresa possui atualmente 12 máquinas. O usuário precisa cadastrar as máquinas, associar sequenciamentos a elas e consultar individualmente os PDFs e o mapa de cada equipamento.
+- O usuário solicitou aproveitar melhor a largura do monitor e uma visão geral da área planejada do setor por data, com detalhamento por máquina.
+- O usuário seleciona uma máquina previamente cadastrada e depois o PDF para vincular o sequenciamento. Esta decisão substitui o reconhecimento automático do título. Uma máquina pode ter vários sequenciamentos e o histórico deve ser mantido. Usuários com permissão de edição podem cadastrar e alterar máquinas.
+- Quando houver sequenciamentos da mesma máquina para um mesmo dia, o usuário escolhe qual visualizar no painel; não somá-los automaticamente. Relatórios já importados poderão ser vinculados manualmente a uma máquina.
+- A visão geral permite selecionar uma data, consultar a área por máquina e abrir o sequenciamento. Indicadores adicionais de ordens, peças, tempo e capacidade permanecem como sugestões futuras.
+- A eficiência atualmente é global, conforme decisão anterior. A existência de máquinas cadastradas, por si só, não altera essa regra.
+
