@@ -101,3 +101,19 @@ Content-Type: application/json
 {
   "expectedVersion": 1
 }
+
+### Analisar planilha de prazos (.xlsx, usuário com permissão de edição; não persiste dados)
+POST {{baseUrl}}/prazos/planilha/preview
+Authorization: Bearer {{login.response.body.token}}
+Content-Type: multipart/form-data; boundary=DeadlineBoundary
+
+--DeadlineBoundary
+Content-Disposition: form-data; name="ano"
+
+2026
+--DeadlineBoundary
+Content-Disposition: form-data; name="arquivo"; filename="planilha.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< ./planilha.xlsx
+--DeadlineBoundary--

@@ -17,6 +17,8 @@ Importar, editar e exportar mapas de sequenciamento com acesso individual, dados
 - **T-009 — Ampliar área de trabalho:** permitir que a visualização use a largura disponível da tela, mantendo margens responsivas. **Implementado:** validação visual depende do usuário.
 - **T-010 — Refatorar sequenciamento e nomenclatura conforme a skill DDD:** **Em andamento.** Modelo de linhas e sequenciamento tipados, cálculos e agrupamentos no domínio, snapshot legado separado da entidade, testes isolados e nomes internos padronizados parcialmente. A aplicação agora usa contrato opaco para o documento legado; a interpretação e o formato persistido permanecem na infraestrutura. Restam concluir a revisão dos nomes e testes em todas as camadas e avaliar a separação da montagem do domínio em relação ao adaptador de PDF; preservar API, dados existentes e concorrência.
 
+- **T-011 — Prazos por setor:** **Em andamento.** Regra de avaliação e primeira análise temporária de .xlsx implementadas; associação por lote à usinagem e interface de possíveis atrasos disponíveis. A validação com a planilha real, a cobertura completa das operações e a persistência continuam pendentes.
+
 ## Verificação
 
 Testes unitários, HTTP e fluxo com PostgreSQL local foram executados durante a implementação. Compilação, testes unitários e HTTP e testes com PostgreSQL isolado passaram em 2026-11-25; repetir as verificações após novas alterações. As regras confirmadas de quantidade inteira, saldo, tempo com setup, área e controle de conflito estão registradas na definição.

@@ -1,3 +1,4 @@
+import { SectorDeadlinePanel } from "./sector-deadline-panel.tsx";
 import { ReportList } from "./report-list.tsx";
 import { PdfFileInput } from "./pdf-file-input.tsx";
 import { MachinesPanel } from "./machines-panel.tsx";
@@ -36,7 +37,7 @@ export function SequencingWorkspace() {
     "mapa" | "ordens" | "edicao" | "pdf"
   >("mapa");
   const [workspaceSection, setWorkspaceSection] = useState<
-    "reports" | "administration" | "machines" | "dashboard"
+    "reports" | "administration" | "machines" | "dashboard" | "deadlines"
   >("dashboard");
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
   const [selectedField, setSelectedField] = useState<{
@@ -430,6 +431,16 @@ export function SequencingWorkspace() {
             >
               Sequenciamentos
             </button>
+            <button
+              type="button"
+              className={workspaceSection === "deadlines" ? "active" : ""}
+              aria-current={
+                workspaceSection === "deadlines" ? "page" : undefined
+              }
+              onClick={() => setWorkspaceSection("deadlines")}
+            >
+              Prazos por setor
+            </button>
             {userProfile?.papel === "ADMINISTRADOR" && (
               <button
                 type="button"
@@ -778,6 +789,17 @@ export function SequencingWorkspace() {
             </section>
           )}
         </div>
+        {workspaceSection === "deadlines" && (
+          <SectorDeadlinePanel
+            token={token}
+            reports={reportList}
+            machines={machines}
+            canEdit={
+              userProfile?.papel === "ADMINISTRADOR" ||
+              !!userProfile?.podeEditar
+            }
+          />
+        )}
         {workspaceSection === "machines" && (
           <MachinesPanel
             token={token}

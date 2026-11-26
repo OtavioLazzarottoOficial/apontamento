@@ -1,3 +1,4 @@
+import { PreviewSectorDeadlinesController } from './controllers/preview-sector-deadlines.controller.ts';
 import { AssociateReportMachineUseCase } from '../../domain/sequencing/application/usecases/associate-report-machine-usecase.ts';
 import { DeleteReportController } from './controllers/delete-report.controller.ts';
 import { DeleteReportUseCase } from '../../domain/sequencing/application/usecases/delete-report-usecase.ts';
@@ -55,6 +56,7 @@ import { OriginalReportPdfController } from './controllers/original-report-pdf.c
     AssociateReportMachineController,
     MachinesController,
     ConnectionController,
+    PreviewSectorDeadlinesController,
     CapacityConfigurationController,
     AppController,
     HealthController,
