@@ -24,7 +24,10 @@ export class CreateSessionController {
   @Post()
   @HttpCode(200)
   async handle(@Body(new ZodValidationPipe(loginSchema)) body: LoginBody) {
-    const result = await this.authenticate.execute(body);
+    const result = await this.authenticate.execute({
+      email: body.email,
+      password: body.senha,
+    });
     if (result.isLeft()) {
       throw new UnauthorizedException(result.value.message);
     }

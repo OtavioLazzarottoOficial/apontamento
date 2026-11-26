@@ -3,22 +3,22 @@ import { request } from "./sequencing-shared.ts";
 
 export function CapacityConfigurationForm({
   token,
-  eficiencia,
-  aoSalvar,
+  efficiency: efficiencyValue,
+  onSave: handleSave,
 }: {
   token: string;
-  eficiencia: number;
-  aoSalvar: (valor: number) => void;
+  efficiency: number;
+  onSave: (value: number) => void;
 }) {
-  const [valor, setValor] = useState(String(eficiencia));
-  const [mensagem, setMensagem] = useState("");
-  const [ocupado, setOcupado] = useState(false);
-  async function salvar(evento: FormEvent<HTMLFormElement>) {
-    evento.preventDefault();
-    setOcupado(true);
-    setMensagem("");
+  const [inputValue, setInputValue] = useState(String(efficiencyValue));
+  const [statusMessage, setStatusMessage] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsBusy(true);
+    setStatusMessage("");
     try {
-      const resultado = await request<{ eficienciaPercentual: number }>(
+      const result = await request<{ eficienciaPercentual: number }>(
         "/configuracao/capacidade",
         {
           method: "PUT",
@@ -26,25 +26,25 @@ export function CapacityConfigurationForm({
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ eficienciaPercentual: Number(valor) }),
+          body: JSON.stringify({ eficienciaPercentual: Number(inputValue) }),
         },
       );
-      aoSalvar(resultado.eficienciaPercentual);
-      setMensagem("Eficiência global atualizada.");
-    } catch (erro) {
-      setMensagem(
-        erro instanceof Error
-          ? erro.message
+      handleSave(result.eficienciaPercentual);
+      setStatusMessage("Eficiência global atualizada.");
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error
+          ? error.message
           : "Não foi possível salvar a configuração.",
       );
     } finally {
-      setOcupado(false);
+      setIsBusy(false);
     }
   }
   return (
     <details className="tool-card">
       <summary>Configurar eficiência da máquina</summary>
-      <form className="form-stack" onSubmit={salvar}>
+      <form className="form-stack" onSubmit={save}>
         <p>
           O percentual é global e afeta todos os relatórios, inclusive os
           existentes. A jornada base é de 8h48.
@@ -57,12 +57,12 @@ export function CapacityConfigurationForm({
             max="100"
             step="1"
             required
-            value={valor}
-            onChange={(evento) => setValor(evento.target.value)}
+            value={inputValue}
+            onChange={(event) => setInputValue(event.target.value)}
           />
         </label>
-        <button disabled={ocupado}>Salvar eficiência</button>
-        {mensagem && <p role="status">{mensagem}</p>}
+        <button disabled={isBusy}>Salvar eficiência</button>
+        {statusMessage && <p role="status">{statusMessage}</p>}
       </form>
     </details>
   );

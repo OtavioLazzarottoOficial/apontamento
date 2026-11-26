@@ -95,35 +95,35 @@ export const base = (
 ).replace(/\/$/, "");
 
 export async function request<T>(path: string, init: RequestInit): Promise<T> {
-  const resposta = await fetch(`${base}${path}`, init);
-  if (!resposta.ok) {
-    const erro: unknown = await resposta.json().catch(() => null);
-    const mensagem =
-      typeof erro === "object" &&
-      erro !== null &&
-      "message" in erro &&
-      typeof erro.message === "string"
-        ? erro.message
-        : `Erro de comunicação (${resposta.status}).`;
-    throw new Error(mensagem);
+  const response = await fetch(`${base}${path}`, init);
+  if (!response.ok) {
+    const error: unknown = await response.json().catch(() => null);
+    const message =
+      typeof error === "object" &&
+      error !== null &&
+      "message" in error &&
+      typeof error.message === "string"
+        ? error.message
+        : `Erro de comunicação (${response.status}).`;
+    throw new Error(message);
   }
-  if (resposta.status === 204) return undefined as T;
-  return resposta.json() as Promise<T>;
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
 }
 
 export function formatDuration(total: number) {
   return [Math.floor(total / 3600), Math.floor((total % 3600) / 60), total % 60]
-    .map((valor) => String(valor).padStart(2, "0"))
+    .map((value) => String(value).padStart(2, "0"))
     .join(":");
 }
 
-export function parseDuration(valor: FormDataEntryValue | null) {
-  const partes = /^(\d+):([0-5]\d):([0-5]\d)$/.exec(String(valor));
-  if (!partes)
+export function parseDuration(value: FormDataEntryValue | null) {
+  const parts = /^(\d+):([0-5]\d):([0-5]\d)$/.exec(String(value));
+  if (!parts)
     throw new Error(
       "Informe os tempos no formato horas:minutos:segundos, por exemplo 00:01:30.",
     );
-  return Number(partes[1]) * 3600 + Number(partes[2]) * 60 + Number(partes[3]);
+  return Number(parts[1]) * 3600 + Number(parts[2]) * 60 + Number(parts[3]);
 }
 
 export const fieldLabels: Record<EditableField, string> = {

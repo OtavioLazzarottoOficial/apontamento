@@ -32,12 +32,17 @@ export class UpdateLineCompletionController {
     @Param('indice', new ZodValidationPipe(indiceSchema)) indice: number,
     @Body(new ZodValidationPipe(schema)) body: z.infer<typeof schema>,
   ) {
-    const resultado = await this.change.execute({ id, indice, ...body });
-    if (resultado.isLeft()) {
-      if (resultado.value instanceof VersionConflictError)
-        throw new ConflictException(resultado.value.message);
-      throw new NotFoundException(resultado.value.message);
+    const result = await this.change.execute({
+      id,
+      index: indice,
+      expectedVersion: body.versaoEsperada,
+      completed: body.concluida,
+    });
+    if (result.isLeft()) {
+      if (result.value instanceof VersionConflictError)
+        throw new ConflictException(result.value.message);
+      throw new NotFoundException(result.value.message);
     }
-    return ReportPresenter.toHTTP(resultado.value.report);
+    return ReportPresenter.toHTTP(result.value.report);
   }
 }

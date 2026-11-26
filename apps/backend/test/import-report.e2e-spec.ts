@@ -1,3 +1,5 @@
+import { readTestReportData } from './services-in-memory/in-memory-report-document.ts';
+import { LegacyReportDocument } from '../src/infra/pdf/legacy-report-document.ts';
 import { MachinesRepository } from '../src/domain/production/application/repositories/machines-repository.ts';
 import { Machine } from '../src/domain/production/enterprise/machine.ts';
 import { readFile } from 'node:fs/promises';
@@ -11,7 +13,7 @@ import { UniqueEntityID } from '../src/core/entities/unique-entity-id.ts';
 import { UsersRepository } from '../src/domain/auth/application/repositories/users-repository.ts';
 import { User } from '../src/domain/auth/enterprise/user.ts';
 import { ReportsRepository } from '../src/domain/sequencing/application/repositories/reports-repository.ts';
-import { Report } from '../src/domain/sequencing/enterprise/report.ts';
+import { ReportSnapshot } from '../src/domain/sequencing/application/models/report-snapshot.ts';
 import { AppModule } from '../src/infra/app.module.ts';
 import { PrismaService } from '../src/infra/database/prisma/prisma.service.ts';
 import { InMemoryReportsRepository } from './repositories-in-memory/in-memory-reports-repository.ts';
@@ -27,7 +29,7 @@ describe('importação de relatório (HTTP)', () => {
       {
         email: 'editor@example.test',
         passwordHash: 'hash',
-        role: 'USUARIO',
+        role: 'USER',
         canEdit: true,
         canExport: false,
       },
@@ -112,8 +114,12 @@ describe('importação de relatório (HTTP)', () => {
         versao: 1,
       }),
     ]);
-    expect(repository.items[0].content.paginas).toHaveLength(5);
-    expect(repository.items[0].content.machineId).toBe('machine-1');
+    expect(
+      readTestReportData(repository.items[0].content).paginas,
+    ).toHaveLength(5);
+    expect(readTestReportData(repository.items[0].content).machineId).toBe(
+      'machine-1',
+    );
     const leitura = await request(app.getHttpServer())
       .get(`/relatorios/${response.body.id}`)
       .auth(token, { type: 'bearer' })
@@ -187,7 +193,7 @@ describe('importação de relatório (HTTP)', () => {
       {
         email: usuario.email,
         passwordHash: usuario.passwordHash,
-        role: 'USUARIO',
+        role: 'USER',
         canEdit: true,
         canExport: true,
       },
@@ -211,7 +217,7 @@ describe('importação de relatório (HTTP)', () => {
     usuario = User.create({
       email: 'leitor@example.test',
       passwordHash: 'hash',
-      role: 'USUARIO',
+      role: 'USER',
       canEdit: false,
       canExport: false,
     });
@@ -234,7 +240,10 @@ describe('importação de relatório (HTTP)', () => {
       .get('/relatorios/inexistente/original')
       .auth(token, { type: 'bearer' })
       .expect(404);
-    const report = Report.create({ content: { nome: 'Sem PDF' }, version: 1 });
+    const report = ReportSnapshot.create({
+      content: new LegacyReportDocument({ nome: 'Sem PDF' }),
+      version: 1,
+    });
     repository.items.push(report);
     await request(app.getHttpServer())
       .get(`/relatorios/${report.id.toString()}/original`)

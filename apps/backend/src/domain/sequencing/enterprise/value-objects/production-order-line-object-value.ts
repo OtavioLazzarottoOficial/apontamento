@@ -1,30 +1,36 @@
+import { ValueObject } from '../../../../core/entities/object-value.ts';
 import { left, right, type Either } from '../../../../core/either.ts';
 import { InvalidLineValuesError } from '../errors/invalid-line-values-error.ts';
 
-export interface ProductionOrderLineValues {
+export interface ProductionOrderLineObjectValueProps {
   requiredQuantity: number;
   completedQuantity: number;
   unitTimeSeconds: number;
   setupTimeSeconds: number;
 }
 
-export class ProductionOrderLine {
-  private constructor(private readonly values: ProductionOrderLineValues) {}
+export class ProductionOrderLineObjectValue extends ValueObject<ProductionOrderLineObjectValueProps> {
+  get requiredQuantity() {
+    return this.props.requiredQuantity;
+  }
 
+  get completedQuantity() {
+    return this.props.completedQuantity;
+  }
   get balance() {
-    return this.values.requiredQuantity - this.values.completedQuantity;
+    return this.props.requiredQuantity - this.props.completedQuantity;
   }
 
   get productionTimeSeconds() {
     return (
-      this.values.requiredQuantity * this.values.unitTimeSeconds +
-      this.values.setupTimeSeconds
+      this.props.requiredQuantity * this.props.unitTimeSeconds +
+      this.props.setupTimeSeconds
     );
   }
 
   static create(
-    values: ProductionOrderLineValues,
-  ): Either<InvalidLineValuesError, ProductionOrderLine> {
+    values: ProductionOrderLineObjectValueProps,
+  ): Either<InvalidLineValuesError, ProductionOrderLineObjectValue> {
     const numbers = [
       values.requiredQuantity,
       values.completedQuantity,
@@ -43,6 +49,6 @@ export class ProductionOrderLine {
       return left(new InvalidLineValuesError());
     }
 
-    return right(new ProductionOrderLine({ ...values }));
+    return right(new ProductionOrderLineObjectValue({ ...values }));
   }
 }

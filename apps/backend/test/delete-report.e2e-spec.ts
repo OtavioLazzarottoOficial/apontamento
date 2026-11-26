@@ -1,3 +1,4 @@
+import { LegacyReportDocument } from '../src/infra/pdf/legacy-report-document.ts';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -7,7 +8,7 @@ import { UniqueEntityID } from '../src/core/entities/unique-entity-id.ts';
 import { User } from '../src/domain/auth/enterprise/user.ts';
 import { UsersRepository } from '../src/domain/auth/application/repositories/users-repository.ts';
 import { ReportsRepository } from '../src/domain/sequencing/application/repositories/reports-repository.ts';
-import { Report } from '../src/domain/sequencing/enterprise/report.ts';
+import { ReportSnapshot } from '../src/domain/sequencing/application/models/report-snapshot.ts';
 import { AppModule } from '../src/infra/app.module.ts';
 import { PrismaService } from '../src/infra/database/prisma/prisma.service.ts';
 import { InMemoryReportsRepository } from './repositories-in-memory/in-memory-reports-repository.ts';
@@ -16,21 +17,21 @@ describe('delete shared reports (HTTP)', () => {
   let token: string;
   let user: User;
   let reports: InMemoryReportsRepository;
-  let report: Report;
+  let report: ReportSnapshot;
   beforeEach(async () => {
     user = User.create(
       {
         email: 'editor@example.test',
         passwordHash: 'hash',
-        role: 'USUARIO',
+        role: 'USER',
         canEdit: true,
         canExport: false,
       },
       new UniqueEntityID('cc070f93-4219-4ea6-a4dd-ce250e4d2c3a'),
     );
     reports = new InMemoryReportsRepository();
-    report = Report.create({
-      content: {
+    report = ReportSnapshot.create({
+      content: new LegacyReportDocument({
         nome: 'Sequenciamento',
         machineId: 'machine-1',
         linhas: [
@@ -38,7 +39,7 @@ describe('delete shared reports (HTTP)', () => {
           { dataEntrega: '12/11/2026', area: 5 },
           { dataEntrega: '13/11/2026', area: 7 },
         ],
-      },
+      }),
       version: 2,
     });
     reports.items.push(report);
@@ -78,7 +79,7 @@ describe('delete shared reports (HTTP)', () => {
       {
         email: user.email,
         passwordHash: user.passwordHash,
-        role: 'USUARIO',
+        role: 'USER',
         canEdit: false,
         canExport: false,
       },
@@ -93,7 +94,7 @@ describe('delete shared reports (HTTP)', () => {
       {
         email: user.email,
         passwordHash: user.passwordHash,
-        role: 'USUARIO',
+        role: 'USER',
         canEdit: true,
         canExport: false,
       },

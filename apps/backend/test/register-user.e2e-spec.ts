@@ -20,7 +20,7 @@ class UsuariosEmMemoria extends UsersRepository {
     podeExportar: boolean,
   ) {
     const indice = this.items.findIndex(
-      (item) => item.id.toString() === id && item.role === 'USUARIO',
+      (item) => item.id.toString() === id && item.role === 'USER',
     );
     if (indice < 0) return null;
     const atual = this.items[indice];
@@ -61,7 +61,7 @@ describe('cadastro de usuário (HTTP)', () => {
       {
         email: 'admin@example.test',
         passwordHash: 'hash',
-        role: 'ADMINISTRADOR',
+        role: 'ADMIN',
         canEdit: true,
         canExport: true,
       },
@@ -143,7 +143,7 @@ describe('cadastro de usuário (HTTP)', () => {
       {
         email: admin.email,
         passwordHash: 'hash',
-        role: 'USUARIO',
+        role: 'USER',
         canEdit: true,
         canExport: true,
       },

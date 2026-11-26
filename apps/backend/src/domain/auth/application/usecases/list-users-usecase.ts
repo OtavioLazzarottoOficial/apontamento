@@ -6,7 +6,7 @@ import { UsersRepository } from '../repositories/users-repository.ts';
 @Injectable()
 export class ListUsersUseCase {
   constructor(private readonly users: UsersRepository) {}
-  async execute(): Promise<Either<null, { usuarios: User[] }>> {
-    return right({ usuarios: await this.users.list() });
+  async execute(): Promise<Either<null, { users: User[] }>> {
+    return right({ users: await this.users.list() });
   }
 }

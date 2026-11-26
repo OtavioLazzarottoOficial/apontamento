@@ -1,8 +1,16 @@
+import { SequencingLineObjectValue } from '../../domain/sequencing/enterprise/value-objects/sequencing-line-object-value.ts';
+import type { SequencingSummary } from '../../domain/sequencing/enterprise/services/summarize-sequencing.ts';
+import { Sequencing } from '../../domain/sequencing/enterprise/sequencing.ts';
+import { UniqueEntityID } from '../../core/entities/unique-entity-id.ts';
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { left, right, type Either } from '../../core/either.ts';
-import type { ReportValue } from '../../domain/sequencing/enterprise/report.ts';
-import { ProductionOrderLine } from '../../domain/sequencing/enterprise/value-objects/production-order-line.ts';
+import type { ReportDocument } from '../../domain/sequencing/application/models/report-document.ts';
+import {
+  LegacyReportDocument,
+  type LegacyReportValue,
+} from './legacy-report-document.ts';
+import { ProductionOrderLineObjectValue } from '../../domain/sequencing/enterprise/value-objects/production-order-line-object-value.ts';
 import { calculateAreaInHundredths } from '../../domain/sequencing/enterprise/services/calculate-area.ts';
 import { InvalidLineValuesError } from '../../domain/sequencing/enterprise/errors/invalid-line-values-error.ts';
 import { LineNotFoundError } from '../../domain/sequencing/application/usecases/errors/line-not-found-error.ts';
@@ -12,7 +20,7 @@ import {
 } from '../../domain/sequencing/application/services/report-document-editor.ts';
 import { PdfReportPageSummaryUpdater } from './pdf-report-page-summary-updater.ts';
 
-const referencia = z.object({
+const reference = z.object({
   pagina: z.number().int().positive(),
   indice: z.number().int().nonnegative(),
 });
@@ -35,22 +43,22 @@ const linhaSchema = z
     tempoUnitarioSegundos: z.number(),
     tempoProducaoSegundos: z.number(),
     camposTexto: z.object({
-      ordem: z.array(referencia),
-      produto: z.array(referencia),
-      componente: z.array(referencia),
-      dimensoes: z.array(referencia),
+      ordem: z.array(reference),
+      produto: z.array(reference),
+      componente: z.array(reference),
+      dimensoes: z.array(reference),
     }),
     campos: z.object({
-      area: referencia,
-      pendente: referencia,
-      anterior: referencia,
-      pecasPorCiclo: referencia,
-      necessaria: referencia,
-      realizada: referencia,
-      saldo: referencia,
-      tempoSetup: referencia,
-      tempoUnitario: referencia,
-      tempoProducao: referencia,
+      area: reference,
+      pendente: reference,
+      anterior: reference,
+      pecasPorCiclo: reference,
+      necessaria: reference,
+      realizada: reference,
+      saldo: reference,
+      tempoSetup: reference,
+      tempoUnitario: reference,
+      tempoProducao: reference,
     }),
   })
   .passthrough();
@@ -73,10 +81,10 @@ const conteudoSchema = z
   })
   .passthrough();
 
-function formatarTempo(segundos: number) {
-  const horas = Math.floor(segundos / 3600);
-  const minutos = Math.floor((segundos % 3600) / 60);
-  return [horas, minutos, segundos % 60]
+function formatPdfTime(seconds: number) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return [hours, minutes, seconds % 60]
     .map((n) => String(n).padStart(2, '0'))
     .join(':');
 }
@@ -119,13 +127,25 @@ export class PdfReportDocumentEditor extends ReportDocumentEditor {
     super();
   }
 
+  updateMachine(
+    content: ReportDocument,
+    machineId: string | null,
+  ): ReportDocument {
+    return new LegacyReportDocument({
+      ...LegacyReportDocument.dataOf(content),
+      machineId,
+    });
+  }
+
   updateText(
-    content: Record<string, ReportValue>,
+    content: ReportDocument,
     page: number,
     index: number,
     text: string,
-  ): Either<LineNotFoundError, { content: Record<string, ReportValue> }> {
-    const document = textSchema.parse(structuredClone(content));
+  ): Either<LineNotFoundError, { content: ReportDocument }> {
+    const document = textSchema.parse(
+      structuredClone(LegacyReportDocument.dataOf(content)),
+    );
     const allowed = document.linhas.some((line) =>
       [
         ...line.camposTexto.ordem,
@@ -146,202 +166,207 @@ export class PdfReportDocumentEditor extends ReportDocumentEditor {
         line.ordem = text;
     }
     return right({
-      content: document as unknown as Record<string, ReportValue>,
+      content: new LegacyReportDocument(
+        document as unknown as Record<string, LegacyReportValue>,
+      ),
     });
   }
 
   updateCompletion(
-    content: Record<string, ReportValue>,
+    content: ReportDocument,
     index: number,
     completed: boolean,
-  ): Either<LineNotFoundError, { content: Record<string, ReportValue> }> {
+  ): Either<LineNotFoundError, { content: ReportDocument }> {
     const document = z
       .object({ linhas: z.array(z.object({}).passthrough()) })
       .passthrough()
-      .parse(structuredClone(content));
+      .parse(structuredClone(LegacyReportDocument.dataOf(content)));
     const line = document.linhas[index];
     if (!line) return left(new LineNotFoundError());
     line.concluida = completed;
-    return right({ content: document as Record<string, ReportValue> });
+    return right({
+      content: new LegacyReportDocument(
+        document as Record<string, LegacyReportValue>,
+      ),
+    });
   }
 
   updateLine(
-    content: Record<string, ReportValue>,
+    content: ReportDocument,
     changes: ReportLineChanges,
-    calculation: ProductionOrderLine,
+    calculation: ProductionOrderLineObjectValue,
+    reportId: string,
   ): Either<
     InvalidLineValuesError | LineNotFoundError,
-    { content: Record<string, ReportValue> }
+    { content: ReportDocument }
   > {
-    const conteudo = conteudoSchema.parse(structuredClone(content));
-    const linha = conteudo.linhas[changes.index];
-    if (!linha) return left(new LineNotFoundError());
+    const legacyContent = conteudoSchema.parse(
+      structuredClone(LegacyReportDocument.dataOf(content)),
+    );
+    const storedLine = legacyContent.linhas[changes.index];
+    if (!storedLine) return left(new LineNotFoundError());
     if (changes.dimensions !== undefined) {
-      const dimensoes =
+      const parsedDimensions =
         /^(\d+(?:[.,]\d+)?)\s*x\s*(\d+(?:[.,]\d+)?)\s*x\s*\d+(?:[.,]\d+)?$/i.exec(
           changes.dimensions.trim(),
         );
       if (
-        !dimensoes ||
+        !parsedDimensions ||
         calculateAreaInHundredths(
-          dimensoes[1],
-          dimensoes[2],
+          parsedDimensions[1],
+          parsedDimensions[2],
           changes.requiredQuantity,
         ) === null
       ) {
         return left(new InvalidLineValuesError());
       }
-      const ref = linha.camposTexto.dimensoes.find((item) => {
-        const texto = conteudo.paginas.find(
-          (pagina) => pagina.numero === item.pagina,
+      const ref = storedLine.camposTexto.dimensoes.find((item) => {
+        const textValue = legacyContent.paginas.find(
+          (pdfPage) => pdfPage.numero === item.pagina,
         )?.trechos[item.indice]?.texto;
         return (
-          texto &&
-          /^\d+(?:[.,]\d+)?\s*x\s*\d+(?:[.,]\d+)?\s*x/i.test(texto.trim())
+          textValue &&
+          /^\d+(?:[.,]\d+)?\s*x\s*\d+(?:[.,]\d+)?\s*x/i.test(textValue.trim())
         );
       });
-      const trecho =
+      const documentFragment =
         ref &&
-        conteudo.paginas.find((pagina) => pagina.numero === ref.pagina)
+        legacyContent.paginas.find((pdfPage) => pdfPage.numero === ref.pagina)
           ?.trechos[ref.indice];
-      if (!trecho) throw new Error('Campo de dimensões não encontrado.');
-      trecho.texto = changes.dimensions.trim();
-      linha.comprimentoMm = dimensoes[1];
-      linha.larguraMm = dimensoes[2];
+      if (!documentFragment)
+        throw new Error('Campo de dimensões não encontrado.');
+      documentFragment.texto = changes.dimensions.trim();
+      storedLine.comprimentoMm = parsedDimensions[1];
+      storedLine.larguraMm = parsedDimensions[2];
     }
-    Object.assign(linha, {
+    Object.assign(storedLine, {
       necessaria: changes.requiredQuantity,
       realizada: changes.completedQuantity,
       tempoUnitarioSegundos: changes.unitTimeSeconds,
       tempoSetupSegundos: changes.setupTimeSeconds,
       saldo: calculation.balance,
       tempoProducaoSegundos: calculation.productionTimeSeconds,
-      pendente: changes.pendingQuantity ?? linha.pendente,
-      anterior: changes.previousActivity ?? linha.anterior,
-      pecasPorCiclo: changes.piecesPerCycle ?? linha.pecasPorCiclo,
+      pendente: changes.pendingQuantity ?? storedLine.pendente,
+      anterior: changes.previousActivity ?? storedLine.anterior,
+      pecasPorCiclo: changes.piecesPerCycle ?? storedLine.pecasPorCiclo,
     });
-    function atualizarTrecho(ref: z.infer<typeof referencia>, texto: string) {
-      const trecho = conteudo.paginas.find(
-        (pagina) => pagina.numero === ref.pagina,
+    function updateFragment(ref: z.infer<typeof reference>, textValue: string) {
+      const documentFragment = legacyContent.paginas.find(
+        (pdfPage) => pdfPage.numero === ref.pagina,
       )?.trechos[ref.indice];
-      if (!trecho)
+      if (!documentFragment)
         throw new Error(
           'Referência de campo inválida no relatório armazenado.',
         );
-      trecho.texto = texto;
+      documentFragment.texto = textValue;
     }
-    atualizarTrecho(
-      linha.campos.necessaria,
+    updateFragment(
+      storedLine.campos.necessaria,
       changes.requiredQuantity.toFixed(2).replace('.', ','),
     );
-    atualizarTrecho(
-      linha.campos.realizada,
+    updateFragment(
+      storedLine.campos.realizada,
       changes.completedQuantity.toFixed(2).replace('.', ','),
     );
-    atualizarTrecho(
-      linha.campos.saldo,
+    updateFragment(
+      storedLine.campos.saldo,
       calculation.balance.toFixed(2).replace('.', ','),
     );
-    atualizarTrecho(
-      linha.campos.tempoSetup,
-      formatarTempo(changes.setupTimeSeconds),
+    updateFragment(
+      storedLine.campos.tempoSetup,
+      formatPdfTime(changes.setupTimeSeconds),
     );
-    atualizarTrecho(
-      linha.campos.tempoUnitario,
-      formatarTempo(changes.unitTimeSeconds),
+    updateFragment(
+      storedLine.campos.tempoUnitario,
+      formatPdfTime(changes.unitTimeSeconds),
     );
-    atualizarTrecho(
-      linha.campos.tempoProducao,
-      formatarTempo(calculation.productionTimeSeconds),
+    updateFragment(
+      storedLine.campos.tempoProducao,
+      formatPdfTime(calculation.productionTimeSeconds),
     );
-    atualizarTrecho(linha.campos.pendente, String(linha.pendente));
-    atualizarTrecho(
-      linha.campos.anterior,
-      linha.anterior.toFixed(2).replace('.', ','),
+    updateFragment(storedLine.campos.pendente, String(storedLine.pendente));
+    updateFragment(
+      storedLine.campos.anterior,
+      storedLine.anterior.toFixed(2).replace('.', ','),
     );
-    atualizarTrecho(linha.campos.pecasPorCiclo, String(linha.pecasPorCiclo));
-    const porData: Record<
-      string,
-      {
-        necessaria: number;
-        realizada: number;
-        saldo: number;
-        tempoProducaoSegundos: number;
-      }
-    > = {};
-    const porLote: Record<
-      string,
-      {
-        necessaria: number;
-        realizada: number;
-        saldo: number;
-        tempoProducaoSegundos: number;
-      }
-    > = {};
-    const total = {
-      necessaria: 0,
-      realizada: 0,
-      saldo: 0,
-      tempoProducaoSegundos: 0,
-    };
-    for (const item of conteudo.linhas) {
-      const areaEmCentesimos = calculateAreaInHundredths(
-        item.comprimentoMm,
-        item.larguraMm,
-        item.necessaria,
-      );
-      if (areaEmCentesimos === null) {
+    updateFragment(
+      storedLine.campos.pecasPorCiclo,
+      String(storedLine.pecasPorCiclo),
+    );
+    const domainLines: SequencingLineObjectValue[] = [];
+    for (const item of legacyContent.linhas) {
+      if (
+        calculateAreaInHundredths(
+          item.comprimentoMm,
+          item.larguraMm,
+          item.necessaria,
+        ) === null
+      ) {
         throw new Error('Dimensões inválidas no relatório armazenado.');
       }
-      item.area = areaEmCentesimos / 100;
-      atualizarTrecho(item.campos.area, item.area.toFixed(2).replace('.', ','));
-      const resultado = ProductionOrderLine.create({
+      const line = SequencingLineObjectValue.create({
+        deliveryDate: item.dataEntrega,
+        schedule: item.programacao,
+        batch: item.lote,
+        lengthMm: item.comprimentoMm,
+        widthMm: item.larguraMm,
         requiredQuantity: item.necessaria,
         completedQuantity: item.realizada,
         unitTimeSeconds: item.tempoUnitarioSegundos,
         setupTimeSeconds: item.tempoSetupSegundos,
       });
-      if (resultado.isLeft()) {
-        return left(resultado.value);
-      }
-      item.saldo = resultado.value.balance;
-      item.tempoProducaoSegundos = resultado.value.productionTimeSeconds;
-      atualizarTrecho(
+      if (line.isLeft()) return left(line.value);
+      domainLines.push(line.value);
+      item.area = line.value.areaInHundredths / 100;
+      item.saldo = line.value.balance;
+      item.tempoProducaoSegundos = line.value.productionTimeSeconds;
+      updateFragment(item.campos.area, item.area.toFixed(2).replace('.', ','));
+      updateFragment(
         item.campos.saldo,
         item.saldo.toFixed(2).replace('.', ','),
       );
-      atualizarTrecho(
+      updateFragment(
         item.campos.tempoProducao,
-        formatarTempo(item.tempoProducaoSegundos),
+        formatPdfTime(item.tempoProducaoSegundos),
       );
-      const data = (porData[item.dataEntrega] ??= {
-        necessaria: 0,
-        realizada: 0,
-        saldo: 0,
-        tempoProducaoSegundos: 0,
-      });
-      const lote = (porLote[`${item.programacao}|${item.lote}`] ??= {
-        necessaria: 0,
-        realizada: 0,
-        saldo: 0,
-        tempoProducaoSegundos: 0,
-      });
-      for (const resumo of [data, lote, total]) {
-        resumo.necessaria += item.necessaria;
-        resumo.realizada += item.realizada;
-        resumo.saldo += item.saldo;
-        resumo.tempoProducaoSegundos += item.tempoProducaoSegundos;
-      }
     }
-    this.pageSummaryUpdater.updateSummaries(conteudo.paginas, {
+    const summaries = Sequencing.create(
+      { lines: domainLines },
+      new UniqueEntityID(reportId),
+    ).summarize();
+    const toStoredSummary = (summary: SequencingSummary) => ({
+      necessaria: summary.requiredQuantity,
+      realizada: summary.completedQuantity,
+      saldo: summary.balance,
+      tempoProducaoSegundos: summary.productionTimeSeconds,
+    });
+    const porData = Object.fromEntries(
+      Object.entries(summaries.byDate).map(([key, value]) => [
+        key,
+        toStoredSummary(value),
+      ]),
+    );
+    const porLote = Object.fromEntries(
+      Object.entries(summaries.byBatch).map(([key, value]) => [
+        key,
+        toStoredSummary(value),
+      ]),
+    );
+    const total = toStoredSummary(summaries.total);
+    this.pageSummaryUpdater.updateSummaries(legacyContent.paginas, {
       porData,
       porLote,
       total,
     });
-    this.pageSummaryUpdater.updateSubtotals(conteudo.paginas, conteudo.linhas);
-    conteudo.resumos = { porData, porLote, total };
+    this.pageSummaryUpdater.updateSubtotals(
+      legacyContent.paginas,
+      legacyContent.linhas,
+    );
+    legacyContent.resumos = { porData, porLote, total };
     return right({
-      content: conteudo as unknown as Record<string, ReportValue>,
+      content: new LegacyReportDocument(
+        legacyContent as unknown as Record<string, LegacyReportValue>,
+      ),
     });
   }
 }

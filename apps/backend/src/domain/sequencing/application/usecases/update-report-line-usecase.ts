@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { left, type Either } from '../../../../core/either.ts';
-import type { Report } from '../../enterprise/report.ts';
-import { ProductionOrderLine } from '../../enterprise/value-objects/production-order-line.ts';
+import type { ReportSnapshot } from '../models/report-snapshot.ts';
+import { ProductionOrderLineObjectValue } from '../../enterprise/value-objects/production-order-line-object-value.ts';
 import { InvalidLineValuesError } from '../../enterprise/errors/invalid-line-values-error.ts';
 import { ReportsRepository } from '../repositories/reports-repository.ts';
 import { ReportDocumentEditor } from '../services/report-document-editor.ts';
@@ -12,16 +12,16 @@ import { LineNotFoundError } from './errors/line-not-found-error.ts';
 
 interface Request {
   id: string;
-  indice: number;
-  versaoEsperada: number;
-  necessaria: number;
-  realizada: number;
-  tempoUnitarioSegundos: number;
-  tempoSetupSegundos: number;
-  dimensoes?: string;
-  pendente?: number;
-  anterior?: number;
-  pecasPorCiclo?: number;
+  index: number;
+  expectedVersion: number;
+  requiredQuantity: number;
+  completedQuantity: number;
+  unitTimeSeconds: number;
+  setupTimeSeconds: number;
+  dimensions?: string;
+  pendingQuantity?: number;
+  previousActivity?: number;
+  piecesPerCycle?: number;
 }
 
 @Injectable()
@@ -40,21 +40,25 @@ export class UpdateReportLineUseCase {
       | VersionConflictError
       | InvalidLineValuesError
       | LineNotFoundError,
-      { report: Report }
+      { report: ReportSnapshot }
     >
   > {
-    const calculation = ProductionOrderLine.create({
-      requiredQuantity: request.necessaria,
-      completedQuantity: request.realizada,
-      unitTimeSeconds: request.tempoUnitarioSegundos,
-      setupTimeSeconds: request.tempoSetupSegundos,
+    const calculation = ProductionOrderLineObjectValue.create({
+      requiredQuantity: request.requiredQuantity,
+      completedQuantity: request.completedQuantity,
+      unitTimeSeconds: request.unitTimeSeconds,
+      setupTimeSeconds: request.setupTimeSeconds,
     });
     if (calculation.isLeft()) {
       return left(calculation.value);
     }
 
     if (
-      [request.pendente, request.anterior, request.pecasPorCiclo].some(
+      [
+        request.pendingQuantity,
+        request.previousActivity,
+        request.piecesPerCycle,
+      ].some(
         (value) =>
           value !== undefined && (!Number.isSafeInteger(value) || value < 0),
       )
@@ -66,24 +70,25 @@ export class UpdateReportLineUseCase {
     if (!report) {
       return left(new ReportNotFoundError());
     }
-    if (report.version !== request.versaoEsperada) {
+    if (report.version !== request.expectedVersion) {
       return left(new VersionConflictError());
     }
 
     const updated = this.editor.updateLine(
       report.content,
       {
-        index: request.indice,
-        requiredQuantity: request.necessaria,
-        completedQuantity: request.realizada,
-        unitTimeSeconds: request.tempoUnitarioSegundos,
-        setupTimeSeconds: request.tempoSetupSegundos,
-        dimensions: request.dimensoes,
-        pendingQuantity: request.pendente,
-        previousActivity: request.anterior,
-        piecesPerCycle: request.pecasPorCiclo,
+        index: request.index,
+        requiredQuantity: request.requiredQuantity,
+        completedQuantity: request.completedQuantity,
+        unitTimeSeconds: request.unitTimeSeconds,
+        setupTimeSeconds: request.setupTimeSeconds,
+        dimensions: request.dimensions,
+        pendingQuantity: request.pendingQuantity,
+        previousActivity: request.previousActivity,
+        piecesPerCycle: request.piecesPerCycle,
       },
       calculation.value,
+      report.id.toString(),
     );
     if (updated.isLeft()) {
       return left(updated.value);
@@ -91,7 +96,7 @@ export class UpdateReportLineUseCase {
 
     return this.update.execute({
       id: request.id,
-      expectedVersion: request.versaoEsperada,
+      expectedVersion: request.expectedVersion,
       content: updated.value.content,
     });
   }

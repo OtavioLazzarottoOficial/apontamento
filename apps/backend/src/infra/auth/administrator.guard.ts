@@ -13,8 +13,8 @@ export class AdministratorGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest<{ user: UserPayload }>();
-    const usuario = await this.users.findById(request.user.sub);
-    if (!usuario || usuario.role !== 'ADMINISTRADOR') {
+    const user = await this.users.findById(request.user.sub);
+    if (!user || user.role !== 'ADMIN') {
       throw new ForbiddenException(
         'Somente administradores podem realizar esta ação.',
       );

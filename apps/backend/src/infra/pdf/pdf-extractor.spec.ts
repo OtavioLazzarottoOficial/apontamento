@@ -3,15 +3,15 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PdfExtractor } from './pdf-extractor.ts';
 
-describe('ExtratorPdf', () => {
-  it('extrai as cinco páginas e o texto posicionado do PDF de referência', async () => {
+describe('PdfExtractor', () => {
+  it('extracts five pages and positioned text from the reference PDF', async () => {
     const arquivo = await readFile(
       resolve(
         process.cwd(),
         '../../PO Furadeira Nanxing Mod. NCB2412S B (2).pdf',
       ),
     );
-    const paginas = await new PdfExtractor().extrair(arquivo);
+    const paginas = await new PdfExtractor().extract(arquivo);
     expect(paginas).toHaveLength(5);
     expect(
       paginas.every((pagina) => pagina.largura > 0 && pagina.altura > 0),
@@ -26,9 +26,9 @@ describe('ExtratorPdf', () => {
     ).toBe(true);
   });
 
-  it('rejeita conteúdo que não é PDF', async () => {
+  it('rejects content that is not a PDF', async () => {
     await expect(
-      new PdfExtractor().extrair(new Uint8Array([1, 2, 3])),
+      new PdfExtractor().extract(new Uint8Array([1, 2, 3])),
     ).rejects.toThrow();
   });
 });

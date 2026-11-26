@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { left, right, type Either } from '../../../../core/either.ts';
-import { Report, type ReportValue } from '../../enterprise/report.ts';
+import { ReportSnapshot } from '../models/report-snapshot.ts';
+import type { ReportDocument } from '../models/report-document.ts';
 import { ReportsRepository } from '../repositories/reports-repository.ts';
 import { VersionConflictError } from './errors/version-conflict-error.ts';
 import { ReportNotFoundError } from './errors/report-not-found-error.ts';
@@ -8,12 +9,12 @@ import { ReportNotFoundError } from './errors/report-not-found-error.ts';
 interface Request {
   id: string;
   expectedVersion: number;
-  content: { [key: string]: ReportValue };
+  content: ReportDocument;
 }
 
 type Response = Either<
   ReportNotFoundError | VersionConflictError,
-  { report: Report }
+  { report: ReportSnapshot }
 >;
 
 @Injectable()
@@ -21,29 +22,29 @@ export class UpdateReportUseCase {
   constructor(private readonly reports: ReportsRepository) {}
 
   async execute(request: Request): Promise<Response> {
-    const atual = await this.reports.findById(request.id);
+    const current = await this.reports.findById(request.id);
 
-    if (!atual) {
+    if (!current) {
       return left(new ReportNotFoundError());
     }
 
-    if (atual.version !== request.expectedVersion) {
+    if (current.version !== request.expectedVersion) {
       return left(new VersionConflictError());
     }
 
-    const relatorio = Report.create(
-      { content: request.content, version: atual.version + 1 },
-      atual.id,
+    const report = ReportSnapshot.create(
+      { content: request.content, version: current.version + 1 },
+      current.id,
     );
-    const atualizado = await this.reports.updateIfVersionMatches(
-      relatorio,
+    const saved = await this.reports.updateIfVersionMatches(
+      report,
       request.expectedVersion,
     );
 
-    if (!atualizado) {
+    if (!saved) {
       return left(new VersionConflictError());
     }
 
-    return right({ report: relatorio });
+    return right({ report });
   }
 }

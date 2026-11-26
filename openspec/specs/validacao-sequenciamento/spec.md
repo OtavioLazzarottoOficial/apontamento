@@ -13,7 +13,7 @@ Esta especificação registra a intenção do produto e as regras informadas at�
 - **Tempo por peça:** tempo unitário informado para produzir uma peça.
 - **Setup:** tempo necessário para preparação ou troca entre operações, conforme informado no sequenciamento.
 - **Capacidade efetiva diária:** tempo de referência para avaliar o planejamento, após a aplicação do percentual de eficiência definido.
-- **Conclusão:** marcação de acompanhamento de uma ordem. Atualmente não altera automaticamente suas quantidades ou os totais.
+- **Conclusão:** marcação de acompanhamento de uma ordem. Não altera automaticamente suas quantidades nem o total planejado, mas exclui a ordem do tempo restante.
 
 ## Requisitos
 
@@ -35,7 +35,7 @@ O usuário autenticado DEVE poder visualizar o PDF originalmente enviado junto a
 
 O usuário DEVE poder buscar relatórios pelo nome e filtrá-los por máquina, mês e dia das datas de entrega presentes nas ordens. A listagem deve dividir resultados em páginas e manter relatórios sem máquina acessíveis. Usuários autorizados a editar podem remover um relatório compartilhado após confirmação explícita; a remoção inclui o PDF original e as alterações e afeta todos os usuários. O sistema deve rejeitar a remoção quando a versão mudou desde a listagem.
 
-Na visão geral, as datas disponíveis devem ser selecionadas por mês e dia, mantendo a escolha de relatório para máquinas com sequenciamentos sobrepostos.
+Na visão geral, as datas disponíveis devem ser selecionadas por semana de produção e dia, mantendo a escolha de relatório para máquinas com sequenciamentos sobrepostos.
 
 ### Requirement: Organizar sequenciamentos por máquina
 
@@ -46,6 +46,14 @@ Usuários com permissão de edição podem desvincular um relatório da máquina
 ### Requirement: Consultar a área do setor por data
 
 O sistema DEVE mostrar a soma das áreas planejadas das máquinas por data de entrega. Quando uma máquina tiver vários sequenciamentos para a data, o usuário escolhe qual utilizar; os documentos não são somados automaticamente. Se alguma máquina não tiver sequenciamento para a data ou aguardar seleção, o sistema deve indicar que o total está incompleto. As áreas incluem ordens concluídas, conforme a regra vigente do mapa.
+
+O cartão de cada máquina com sequenciamento escolhido DEVE mostrar, identificadas separadamente, a área da data selecionada e a área das ordens de segunda a sexta da semana selecionada. Essa área semanal não soma outros relatórios da máquina. A visão geral também deve apresentar separadamente os totais do setor para a data e para a semana selecionadas. O total semanal soma as áreas semanais dos relatórios escolhidos por máquina e deve indicar quando faltar sequenciamento semanal ou escolha de relatório; a falta de ordem na data selecionada afeta o total diário, mas não torna o semanal incompleto por si só.
+
+### Requirement: Organizar por semana de produção
+
+A visão geral das máquinas e o mapa do sequenciamento DEVEM iniciar na semana atual, de segunda a sexta, calculada pela data local, e permitir selecionar outras semanas presentes nos dados. A seleção de relatório por máquina considera os relatórios com ordens na semana; quando houver mais de um, o usuário escolhe um. Os totais semanais excluem ordens fora de segunda a sexta e de outras semanas.
+
+O mapa deve permitir consultar separadamente ordens em aberto de datas anteriores ao início da semana selecionada. Essas ordens não integram o tempo semanal, mas continuam integrando o tempo restante de todo o relatório. Datas inválidas ou de fim de semana ficam fora da programação semanal e devem gerar aviso para conferência. Conclusão e reabertura devem respeitar as permissões e os índices originais das ordens.
 
 ### Requirement: Organizar a conferência por data
 
@@ -79,20 +87,47 @@ O mapa de sequenciamento DEVE apresentar a área total planejada em metros quadr
 
 ### Requirement: Acompanhar a conclusão de uma ordem
 
-O sistema DEVE permitir que um usuário autorizado marque uma ordem como concluída e reverta essa marcação. A ordem concluída deve permanecer identificável na visualização.
+O sistema DEVE permitir que um usuário autorizado marque uma ordem como concluída e reverta essa marcação. Por padrão, o mapa deve mostrar as ordens em aberto da data selecionada e ocultar as concluídas, que permanecem disponíveis na visualização de concluídas para consulta e reabertura. Uma data continua acessível mesmo quando todas as suas ordens estão concluídas.
 
 #### Scenario: Marcar e reabrir
 
 - **DADO** uma ordem de um relatório compartilhado
 - **QUANDO** um usuário autorizado marcá-la como concluída ou reabri-la
 - **ENTÃO** o status deve ser salvo e ficar disponível aos demais usuários com acesso.
-- **E** essa marcação, por si só, não deve alterar a quantidade realizada, o saldo ou os totais.
+- **E** essa marcação, por si só, não deve alterar a quantidade realizada, o saldo ou os totais planejados.
+
+#### Scenario: Tempo de produção restante
+
+- **DADO** um dia com ordens em aberto e concluídas
+- **QUANDO** uma ordem for concluída ou reaberta
+- **ENTÃO** o tempo restante deve somar os tempos de produção das ordens em aberto da data, incluindo o setup já presente no tempo de cada linha.
+- **E** o tempo planejado deve continuar somando todas as ordens da data.
+- **E** se todas as ordens estiverem concluídas, o tempo restante deve ser zero.
+- **E** a seleção da lista de concluídas não altera esses valores.
+
+O tempo restante é baseado na conclusão integral da ordem; o tratamento de produção parcial permanece pendente de definição.
+
+#### Scenario: Tempo restante de todo o sequenciamento
+
+- **DADO** um dia selecionado no sequenciamento de uma máquina
+- **QUANDO** o usuário consultar o mapa
+- **ENTÃO** o sistema deve mostrar a soma do tempo de produção de todas as ordens em aberto do relatório, incluindo setup e independentemente da data da ordem ou do dia selecionado.
+- **E** ordens concluídas não entram na soma; reabri-las volta a incluí-las.
+- **E** ordens em aberto com data inválida também entram na soma.
+- **E** a soma considera apenas o relatório aberto; não agrega outros relatórios ou máquinas.
+
+#### Scenario: Consultar ordens concluídas
+
+- **DADO** um dia com ordens concluídas
+- **QUANDO** o usuário abrir a visualização de concluídas
+- **ENTÃO** o sistema deve mostrar as ordens concluídas da data selecionada e permitir sua reabertura a usuários autorizados.
+- **E** os totais do dia continuam considerando todas as ordens, independentemente do filtro.
 
 ### Requirement: Avaliar capacidade e setups
 
 O sistema DEVE comparar a carga diária planejada da máquina com a capacidade efetiva diária. A carga compreende a soma do tempo de produção das peças e dos tempos de setup das ordens do dia. O setup faz parte da carga comparada ao limite de eficiência; não deve ser descontado novamente da capacidade. Quando a carga ultrapassar o limite, o sistema deve informar que o sequenciamento excede a capacidade. O planejamento cujo total seja exatamente igual ao limite não o excede.
 
-O sistema também deve permitir a análise do tempo de setup; o critério para um alerta específico de excesso de setup ainda precisa ser definido. A marcação de conclusão, por si só, continua sem alterar quantidades ou totais. Quais ordens compõem a carga utilizada para cada tipo de análise ainda deve ser confirmado.
+O sistema também deve permitir a análise do tempo de setup; o critério para um alerta específico de excesso de setup ainda precisa ser definido. A marcação de conclusão não altera quantidades nem a carga planejada usada nessa análise. Quais ordens compõem a carga utilizada para cada tipo de análise ainda deve ser confirmado.
 
 #### Scenario: Capacidade com a jornada base confirmada
 
@@ -127,7 +162,7 @@ O sistema DEVE permitir que um administrador altere o percentual de eficiência 
 - Eficiência inicial de referência: 80%, com possibilidade de alteração pelo administrador.
 - A parcela da jornada fora da capacidade efetiva é uma margem para perdas e interrupções. Para avaliar a carga planejada, o setup informado no relatório entra junto com o tempo das peças dentro do limite de capacidade; não descontá-lo novamente.
 - Fórmula atualmente definida por linha: quantidade necessária × tempo por peça + tempo de setup. Saldo = quantidade necessária − quantidade realizada.
-- Os totais de um agrupamento somam os valores das linhas correspondentes. Marcar uma linha como concluída não a exclui dos totais atuais.
+- Os totais planejados de um agrupamento somam os valores das linhas correspondentes, inclusive concluídas. O indicador de tempo restante soma apenas as ordens em aberto.
 
 ## Questões em aberto
 
@@ -146,6 +181,23 @@ O sistema DEVE permitir que um administrador altere o percentual de eficiência 
 
 ## Registro de implementação
 
+- **2026-11-25 21:59 (America/Sao_Paulo) — Implementado:** visão geral apresenta os totais do setor para o dia e a semana, com indicação independente de resultado incompleto. A validação visual depende do usuário.
+
+- **2026-11-25 21:54 (America/Sao_Paulo) — Alterado:** a visão geral e o mapa iniciam na semana atual de segunda a sexta e permitem selecionar outras semanas; a área semanal por máquina e o tempo semanal excluem outras semanas. Ordens em aberto anteriores podem ser consultadas separadamente. Datas inválidas e fins de semana geram aviso no mapa. A validação visual depende do usuário; produção parcial permanece pendente.
+
+- **2026-11-25 21:37 (America/Sao_Paulo) — Alterado:** a visão geral distingue a área da data e a área de todo o sequenciamento selecionado em cada máquina; o total do setor continua diário. A soma do relatório inclui linhas sem data e não acumula relatórios sobrepostos. Validação visual depende do usuário.
+
+- **2026-11-25 21:33 (America/Sao_Paulo) — Alterado:** a pedido do usuário, o indicador semanal foi substituído pelo tempo restante de todo o sequenciamento aberto, inclusive ordens de datas anteriores e posteriores ao dia selecionado. Mantido o tempo restante do dia. A validação visual depende do usuário; o tratamento de produção parcial permanece pendente.
+
+- **2026-11-25 21:31 (America/Sao_Paulo) — Implementado:** acrescentado o tempo restante do dia selecionado até domingo para o relatório aberto, excluindo ordens concluídas e avisando sobre datas inválidas. A validação visual depende do usuário.
+
+- **2026-11-25 21:27 (America/Sao_Paulo) — Implementado:** o mapa apresenta o tempo de produção restante das ordens em aberto e o tempo planejado de todas as ordens do dia, com setup incluído. A análise de capacidade planejada permanece inalterada. O tratamento de produção parcial e a validação visual permanecem pendentes.
+
+- **2026-11-25 21:19 (America/Sao_Paulo) — Implementado:** o mapa mostra ordens em aberto por padrão e permite consultar e reabrir as concluídas por data; os totais planejados continuam incluindo todas as ordens. A validação visual depende do usuário. Não há registro de data, usuário ou histórico de eventos de conclusão.
+
+- **2026-11-25 20:27 (America/Sao_Paulo) — Refatoração técnica em andamento:** as portas de aplicação passaram a receber um contrato opaco para o documento; o JSON legado é tratado nos adaptadores de infraestrutura. Compilação, testes unitários, HTTP e fluxo com PostgreSQL isolado passaram. Permanecem pendentes a revisão completa de nomenclatura e a avaliação da montagem do domínio no adaptador de PDF. Não houve alteração intencional nas regras de negócio.
+
+- **2026-11-25 20:20 (America/Sao_Paulo) — Refatoração técnica em andamento:** sequenciamento e linhas tipadas no domínio, cálculos e agrupamentos extraídos do adaptador PDF, contratos internos e papéis de usuário padronizados em inglês, com mapeamento para formatos HTTP e dados existentes. Testes de caso de uso isolados dos testes de PDF; vínculo de máquina movido para caso de uso. O snapshot e a porta de edição ainda transportam o documento legado genérico na aplicação; a separação completa permanece pendente. Não houve alteração intencional nas regras de negócio.
 - **2026-11-24 22:10 (America/Sao_Paulo) — Implementado:** associação na importação passou a exigir seleção manual de máquina, seguida da escolha do PDF; cadastro de máquina disponível apenas com nome. Essa decisão substitui a identificação automática anterior.
 - **2026-11-24 22:07 (America/Sao_Paulo) — Implementado:** limpeza do PDF selecionado antes de importar, desvinculação do relatório pela visão geral ou pelo relatório aberto e acesso direto à exclusão permanente no relatório. Validação visual depende do usuário.
 - **2026-11-24 22:02 (America/Sao_Paulo) — Implementado:** substituída a imagem da página do PDF por uma tabela editável gerada pelo sistema, com as colunas do modelo e apenas as ordens da data escolhida. A visualização separada do PDF original continua disponível. Validação visual depende do usuário.

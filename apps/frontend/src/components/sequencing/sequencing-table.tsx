@@ -6,7 +6,7 @@ import type {
 } from "./sequencing-shared.ts";
 import { fieldLabels, formatDuration } from "./sequencing-shared.ts";
 
-type IndexedLine = { linha: ReportLine; indice: number };
+type IndexedLine = { line: ReportLine; index: number };
 type NumericField =
   | "area"
   | "pendente"
@@ -22,6 +22,7 @@ type NumericField =
 export function SequencingTable({
   date,
   lines,
+  totalLines,
   pages,
   editable,
   busy,
@@ -31,6 +32,7 @@ export function SequencingTable({
 }: {
   date: string;
   lines: IndexedLine[];
+  totalLines: IndexedLine[];
   pages: ReportPage[];
   editable: boolean;
   busy: boolean;
@@ -39,7 +41,7 @@ export function SequencingTable({
   onSelectText: (reference: FieldReference, label: string) => void;
 }) {
   const sum = (field: NumericField) =>
-    lines.reduce((total, item) => total + item.linha[field], 0);
+    totalLines.reduce((total, item) => total + item.line[field], 0);
   const number = (value: number) =>
     value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
   const area = (value: number) =>
@@ -149,112 +151,112 @@ export function SequencingTable({
             </tr>
           </thead>
           <tbody>
-            {lines.map(({ linha, indice }) => {
-              const dimensions = linha.camposTexto.dimensoes
+            {lines.map(({ line, index }) => {
+              const dimensions = line.camposTexto.dimensoes
                 .map((ref) => fragment(ref)?.texto ?? "")
                 .join(" ")
                 .trim();
               return (
                 <tr
-                  key={indice}
-                  className={linha.concluida ? "mapa-concluida" : undefined}
+                  key={index}
+                  className={line.concluida ? "mapa-concluida" : undefined}
                 >
                   <td>
                     {editableText(
-                      linha.camposTexto.produto,
-                      `produto da OP ${linha.ordem}`,
+                      line.camposTexto.produto,
+                      `produto da OP ${line.ordem}`,
                     )}
                   </td>
                   <td>
-                    {linha.programacao}
+                    {line.programacao}
                     <br />
-                    {linha.lote}
+                    {line.lote}
                   </td>
                   <td>
                     {editableText(
-                      linha.camposTexto.ordem,
-                      `ordem de produção ${linha.ordem}`,
+                      line.camposTexto.ordem,
+                      `ordem de produção ${line.ordem}`,
                     )}
                   </td>
                   <td>
                     {editableText(
-                      linha.camposTexto.componente,
-                      `componente da OP ${linha.ordem}`,
+                      line.camposTexto.componente,
+                      `componente da OP ${line.ordem}`,
                     )}
                   </td>
                   <td>
-                    {field(dimensions || "—", indice, "dimensoes", linha.ordem)}
+                    {field(dimensions || "—", index, "dimensoes", line.ordem)}
                   </td>
-                  <td>{area(linha.area)}</td>
+                  <td>{area(line.area)}</td>
                   <td>
                     {field(
-                      number(linha.pendente),
-                      indice,
+                      number(line.pendente),
+                      index,
                       "pendente",
-                      linha.ordem,
+                      line.ordem,
                     )}
                   </td>
                   <td className="mapa-anterior">
                     {field(
-                      number(linha.anterior),
-                      indice,
+                      number(line.anterior),
+                      index,
                       "anterior",
-                      linha.ordem,
+                      line.ordem,
                     )}
                   </td>
                   <td>
                     {field(
-                      number(linha.necessaria),
-                      indice,
+                      number(line.necessaria),
+                      index,
                       "necessaria",
-                      linha.ordem,
+                      line.ordem,
                     )}
                   </td>
                   <td>
                     {field(
-                      number(linha.realizada),
-                      indice,
+                      number(line.realizada),
+                      index,
                       "realizada",
-                      linha.ordem,
+                      line.ordem,
                     )}
                   </td>
-                  <td>{number(linha.saldo)}</td>
+                  <td>{number(line.saldo)}</td>
                   <td>
                     {field(
-                      number(linha.pecasPorCiclo),
-                      indice,
+                      number(line.pecasPorCiclo),
+                      index,
                       "pecasPorCiclo",
-                      linha.ordem,
+                      line.ordem,
                     )}
                   </td>
                   <td>
                     {field(
-                      formatDuration(linha.tempoSetupSegundos),
-                      indice,
+                      formatDuration(line.tempoSetupSegundos),
+                      index,
                       "tempoSetup",
-                      linha.ordem,
+                      line.ordem,
                     )}
                   </td>
                   <td>
                     {field(
-                      formatDuration(linha.tempoUnitarioSegundos),
-                      indice,
+                      formatDuration(line.tempoUnitarioSegundos),
+                      index,
                       "tempoUnitario",
-                      linha.ordem,
+                      line.ordem,
                     )}
                   </td>
-                  <td>{formatDuration(linha.tempoProducaoSegundos)}</td>
+                  <td>{formatDuration(line.tempoProducaoSegundos)}</td>
                   <td className="mapa-status">
-                    {linha.concluida ? "Concluída" : "Em aberto"}
+                    {line.concluida ? "Concluída" : "Em aberto"}
                     {editable && (
                       <button
                         type="button"
                         className="mapa-status-botao"
                         disabled={busy}
-                        aria-label={`${linha.concluida ? "Reabrir" : "Concluir"} OP ${linha.ordem}`}
-                        onClick={() => onComplete(indice, !linha.concluida)}
+                        aria-label={`${line.concluida ? "Reabrir" : "Concluir"} OP ${line.ordem}`}
+                        onClick={() => onComplete(index, !line.concluida)}
                       >
-                        {linha.concluida ? "Reabrir" : "Concluir"}
+                        {line.concluida ? "Reabrir" : "Concluir"}
                       </button>
                     )}
                   </td>

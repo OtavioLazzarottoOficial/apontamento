@@ -1,3 +1,7 @@
+import {
+  InMemoryReportDocument,
+  readTestReportData,
+} from '../../../../../test/services-in-memory/in-memory-report-document.ts';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { makeReport } from '../../../../../test/factories/make-report.ts';
 import { InMemoryReportsRepository } from '../../../../../test/repositories-in-memory/in-memory-reports-repository.ts';
@@ -5,7 +9,7 @@ import { UpdateReportUseCase } from './update-report-usecase.ts';
 import { VersionConflictError } from './errors/version-conflict-error.ts';
 import { ReportNotFoundError } from './errors/report-not-found-error.ts';
 
-describe('Atualizar relatório', () => {
+describe('UpdateReportUseCase', () => {
   let repository: InMemoryReportsRepository;
   let sut: UpdateReportUseCase;
 
@@ -14,49 +18,56 @@ describe('Atualizar relatório', () => {
     sut = new UpdateReportUseCase(repository);
   });
 
-  it('salva a versão seguinte', async () => {
+  it('saves the next version', async () => {
     const relatorio = makeReport({ version: 1 });
     repository.items.push(relatorio);
     const result = await sut.execute({
       id: relatorio.id.toString(),
       expectedVersion: 1,
-      content: { nome: 'Atualizado' },
+      content: new InMemoryReportDocument({ nome: 'Atualizado' }),
     });
     expect(result.isRight()).toBe(true);
     expect(repository.items[0].version).toBe(2);
-    expect(repository.items[0].content).toEqual({ nome: 'Atualizado' });
+    expect(readTestReportData(repository.items[0].content)).toEqual({
+      nome: 'Atualizado',
+    });
   });
 
-  it('recusa alteração baseada em versão antiga sem sobrescrever a atual', async () => {
-    const relatorio = makeReport({ version: 2, content: { nome: 'Atual' } });
+  it('rejects a stale version without overwriting current data', async () => {
+    const relatorio = makeReport({
+      version: 2,
+      content: new InMemoryReportDocument({ nome: 'Atual' }),
+    });
     repository.items.push(relatorio);
     const result = await sut.execute({
       id: relatorio.id.toString(),
       expectedVersion: 1,
-      content: { nome: 'Antigo' },
+      content: new InMemoryReportDocument({ nome: 'Antigo' }),
     });
     expect(result.value).toBeInstanceOf(VersionConflictError);
-    expect(repository.items[0].content).toEqual({ nome: 'Atual' });
+    expect(readTestReportData(repository.items[0].content)).toEqual({
+      nome: 'Atual',
+    });
   });
 
-  it('recusa a gravação se ocorrer outra alteração depois da leitura', async () => {
+  it('rejects a concurrent update after reading', async () => {
     const relatorio = makeReport({ version: 1 });
     repository.items.push(relatorio);
     repository.updateIfVersionMatches = async () => false;
     const result = await sut.execute({
       id: relatorio.id.toString(),
       expectedVersion: 1,
-      content: {},
+      content: new InMemoryReportDocument({}),
     });
     expect(result.value).toBeInstanceOf(VersionConflictError);
     expect(repository.items[0]).toBe(relatorio);
   });
 
-  it('informa quando o relatório não existe', async () => {
+  it('reports when the document does not exist', async () => {
     const result = await sut.execute({
       id: 'ausente',
       expectedVersion: 1,
-      content: {},
+      content: new InMemoryReportDocument({}),
     });
     expect(result.value).toBeInstanceOf(ReportNotFoundError);
   });

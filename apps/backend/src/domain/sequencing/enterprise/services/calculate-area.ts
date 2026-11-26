@@ -1,31 +1,28 @@
-function decimalParaInteiro(
-  valor: string,
-): { inteiro: bigint; escala: bigint } | null {
-  const partes = /^(\d+)(?:[.,](\d+))?$/.exec(valor.trim());
-  if (!partes) return null;
-  const decimais = partes[2] ?? '';
-  if (decimais.length > 8 || partes[1].length > 12) return null;
+function parseDecimal(
+  value: string,
+): { integer: bigint; scale: bigint } | null {
+  const parts = /^(\d+)(?:[.,](\d+))?$/.exec(value.trim());
+  if (!parts) return null;
+  const decimals = parts[2] ?? '';
+  if (decimals.length > 8 || parts[1].length > 12) return null;
   return {
-    inteiro: BigInt(partes[1] + decimais),
-    escala: 10n ** BigInt(decimais.length),
+    integer: BigInt(parts[1] + decimals),
+    scale: 10n ** BigInt(decimals.length),
   };
 }
 
-/** Comprimento e largura em milímetros; resultado em centésimos de m². */
+/** Comprimento e width em milímetros; result em centésimos de m². */
 export function calculateAreaInHundredths(
-  comprimento: string,
-  largura: string,
-  quantidade: number,
+  length: string,
+  width: string,
+  quantity: number,
 ): number | null {
-  const c = decimalParaInteiro(comprimento);
-  const l = decimalParaInteiro(largura);
-  if (!c || !l || !Number.isSafeInteger(quantidade) || quantidade < 0)
-    return null;
-  const denominador = c.escala * l.escala * 10000n;
-  const resultado =
-    (c.inteiro * l.inteiro * BigInt(quantidade) * 2n + denominador) /
-    (2n * denominador);
-  return resultado <= BigInt(Number.MAX_SAFE_INTEGER)
-    ? Number(resultado)
-    : null;
+  const c = parseDecimal(length);
+  const l = parseDecimal(width);
+  if (!c || !l || !Number.isSafeInteger(quantity) || quantity < 0) return null;
+  const denominator = c.scale * l.scale * 10000n;
+  const result =
+    (c.integer * l.integer * BigInt(quantity) * 2n + denominator) /
+    (2n * denominator);
+  return result <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(result) : null;
 }

@@ -13,8 +13,8 @@ export class EditPermissionGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest<{ user: UserPayload }>();
-    const usuario = await this.users.findById(request.user.sub);
-    if (!usuario || (usuario.role !== 'ADMINISTRADOR' && !usuario.canEdit)) {
+    const user = await this.users.findById(request.user.sub);
+    if (!user || (user.role !== 'ADMIN' && !user.canEdit)) {
       throw new ForbiddenException(
         'Você não tem permissão para editar relatórios.',
       );

@@ -19,21 +19,21 @@ export interface PdfPage {
 
 @Injectable()
 export class PdfExtractor {
-  async extrair(arquivo: Uint8Array): Promise<PdfPage[]> {
-    const tarefa = getDocument({
-      data: new Uint8Array(arquivo),
+  async extract(file: Uint8Array): Promise<PdfPage[]> {
+    const pdfTask = getDocument({
+      data: new Uint8Array(file),
       useSystemFonts: true,
     });
 
     try {
-      const documento = await tarefa.promise;
-      const paginas: PdfPage[] = [];
+      const document = await pdfTask.promise;
+      const pages: PdfPage[] = [];
 
-      for (let numero = 1; numero <= documento.numPages; numero++) {
-        const pagina = await documento.getPage(numero);
-        const viewport = pagina.getViewport({ scale: 1 });
-        const conteudo = await pagina.getTextContent();
-        const trechos = conteudo.items
+      for (let number = 1; number <= document.numPages; number++) {
+        const page = await document.getPage(number);
+        const viewport = page.getViewport({ scale: 1 });
+        const content = await page.getTextContent();
+        const fragments = content.items
           .filter(
             (item): item is TextItem =>
               'str' in item && item.str.trim().length > 0,
@@ -52,17 +52,17 @@ export class PdfExtractor {
             };
           });
 
-        paginas.push({
-          numero,
+        pages.push({
+          numero: number,
           largura: viewport.width,
           altura: viewport.height,
-          trechos,
+          trechos: fragments,
         });
       }
 
-      return paginas;
+      return pages;
     } finally {
-      await tarefa.destroy();
+      await pdfTask.destroy();
     }
   }
 }

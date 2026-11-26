@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { left, right, type Either } from '../../../../core/either.ts';
-import { HashComparer } from '../crypthograpy/hash-comparer.ts';
-import { Encrypter } from '../crypthograpy/encrypter.ts';
+import { HashComparer } from '../cryptography/hash-comparer.ts';
+import { Encrypter } from '../cryptography/encrypter.ts';
 import { UsersRepository } from '../repositories/users-repository.ts';
 import { InvalidCredentialsError } from './errors/invalid-credentials-error.ts';
 
@@ -15,21 +15,21 @@ export class AuthenticateUserUseCase {
 
   async execute({
     email,
-    senha,
+    password,
   }: {
     email: string;
-    senha: string;
+    password: string;
   }): Promise<Either<InvalidCredentialsError, { token: string }>> {
-    const usuario = await this.users.findByEmail(email.trim().toLowerCase());
+    const user = await this.users.findByEmail(email.trim().toLowerCase());
 
     if (
-      !usuario ||
-      !(await this.hashComparer.compare(senha, usuario.passwordHash))
+      !user ||
+      !(await this.hashComparer.compare(password, user.passwordHash))
     ) {
       return left(new InvalidCredentialsError());
     }
 
-    const token = await this.encrypter.encrypty({ sub: usuario.id.toString() });
+    const token = await this.encrypter.encrypt({ sub: user.id.toString() });
     return right({ token });
   }
 }

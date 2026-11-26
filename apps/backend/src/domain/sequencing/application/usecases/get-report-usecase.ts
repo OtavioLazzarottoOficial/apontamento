@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { left, right, type Either } from '../../../../core/either.ts';
-import type { Report } from '../../enterprise/report.ts';
+import type { ReportSnapshot } from '../models/report-snapshot.ts';
 import { ReportsRepository } from '../repositories/reports-repository.ts';
 import { ReportNotFoundError } from './errors/report-not-found-error.ts';
 
@@ -10,11 +10,11 @@ export class GetReportUseCase {
 
   async execute(
     id: string,
-  ): Promise<Either<ReportNotFoundError, { report: Report }>> {
-    const relatorio = await this.reports.findById(id);
-    if (!relatorio) {
+  ): Promise<Either<ReportNotFoundError, { report: ReportSnapshot }>> {
+    const report = await this.reports.findById(id);
+    if (!report) {
       return left(new ReportNotFoundError());
     }
-    return right({ report: relatorio });
+    return right({ report });
   }
 }

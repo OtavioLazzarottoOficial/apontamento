@@ -1,3 +1,4 @@
+import { LegacyReportDocument } from '../../pdf/legacy-report-document.ts';
 import {
   Controller,
   Get,
@@ -27,7 +28,9 @@ export class OriginalReportPdfController {
     if (result.isLeft()) {
       throw new NotFoundException(result.value.message);
     }
-    const source = result.value.report.content.pdfBase64;
+    const source = LegacyReportDocument.dataOf(
+      result.value.report.content,
+    ).pdfBase64;
     if (typeof source !== 'string' || !source) {
       throw new NotFoundException(
         'O PDF original não está disponível neste relatório.',

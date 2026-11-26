@@ -9,7 +9,18 @@ export class ListReportsController {
   @Get()
   @UseGuards(ExistingUserGuard)
   async handle() {
-    const resultado = await this.list.execute();
-    return resultado.value;
+    const result = await this.list.execute();
+    if (result.isLeft()) {
+      throw new Error('Unexpected report listing failure.');
+    }
+    return {
+      relatorios: result.value.reports.map((report) => ({
+        id: report.id,
+        versao: report.version,
+        nome: report.name,
+        machineId: report.machineId,
+        dailyAreas: report.dailyAreas,
+      })),
+    };
   }
 }

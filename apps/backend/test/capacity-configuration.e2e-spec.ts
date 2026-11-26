@@ -20,7 +20,7 @@ describe('configuração de capacidade (HTTP)', () => {
       {
         email: 'admin@example.test',
         passwordHash: 'hash',
-        role: 'ADMINISTRADOR',
+        role: 'ADMIN',
         canEdit: true,
         canExport: true,
       },
@@ -30,7 +30,7 @@ describe('configuração de capacidade (HTTP)', () => {
       {
         email: 'usuario@example.test',
         passwordHash: 'hash',
-        role: 'USUARIO',
+        role: 'USER',
         canEdit: true,
         canExport: false,
       },

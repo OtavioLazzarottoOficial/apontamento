@@ -43,17 +43,29 @@ export class UpdateReportLineController {
     @Param('indice', new ZodValidationPipe(indiceSchema)) indice: number,
     @Body(new ZodValidationPipe(schema)) body: Body,
   ) {
-    const resultado = await this.change.execute({ id, indice, ...body });
-    if (resultado.isLeft()) {
-      if (resultado.value instanceof VersionConflictError)
-        throw new ConflictException(resultado.value.message);
+    const result = await this.change.execute({
+      id,
+      index: indice,
+      expectedVersion: body.versaoEsperada,
+      requiredQuantity: body.necessaria,
+      completedQuantity: body.realizada,
+      unitTimeSeconds: body.tempoUnitarioSegundos,
+      setupTimeSeconds: body.tempoSetupSegundos,
+      dimensions: body.dimensoes,
+      pendingQuantity: body.pendente,
+      previousActivity: body.anterior,
+      piecesPerCycle: body.pecasPorCiclo,
+    });
+    if (result.isLeft()) {
+      if (result.value instanceof VersionConflictError)
+        throw new ConflictException(result.value.message);
       if (
-        resultado.value instanceof ReportNotFoundError ||
-        resultado.value instanceof LineNotFoundError
+        result.value instanceof ReportNotFoundError ||
+        result.value instanceof LineNotFoundError
       )
-        throw new NotFoundException(resultado.value.message);
-      throw new BadRequestException(resultado.value.message);
+        throw new NotFoundException(result.value.message);
+      throw new BadRequestException(result.value.message);
     }
-    return ReportPresenter.toHTTP(resultado.value.report);
+    return ReportPresenter.toHTTP(result.value.report);
   }
 }

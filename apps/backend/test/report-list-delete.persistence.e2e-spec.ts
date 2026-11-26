@@ -47,7 +47,7 @@ isolated('shared report summaries and removal in PostgreSQL', () => {
   it('returns date and machine summaries and deletes only the matching version', async () => {
     const summary = (await reports.list()).find((report) => report.id === id);
     expect(summary).toMatchObject({
-      nome: 'Mapa.pdf',
+      name: 'Mapa.pdf',
       machineId: 'machine-a',
       dailyAreas: [{ date: '12/11/2026', area: 3.25 }],
     });

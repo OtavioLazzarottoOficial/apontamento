@@ -1,13 +1,17 @@
+import { LegacyReportDocument } from '../../../pdf/legacy-report-document.ts';
 import { describe, expect, it } from 'vitest';
 import { UniqueEntityID } from '../../../../core/entities/unique-entity-id.ts';
-import { Report } from '../../../../domain/sequencing/enterprise/report.ts';
+import { ReportSnapshot } from '../../../../domain/sequencing/application/models/report-snapshot.ts';
 import { InvalidStoredReportError } from '../../../errors/invalid-stored-report-error.ts';
 import { PrismaReportMapper } from './prisma-report-mapper.ts';
 
 describe('PrismaRelatorioMapper', () => {
   it('preserva identidade, versão e conteúdo', () => {
-    const original = Report.create(
-      { version: 3, content: { paginas: [{ texto: 'Olá' }] } },
+    const original = ReportSnapshot.create(
+      {
+        version: 3,
+        content: new LegacyReportDocument({ paginas: [{ texto: 'Olá' }] }),
+      },
       new UniqueEntityID('relatorio-1'),
     );
     const restored = PrismaReportMapper.toDomain({

@@ -4,15 +4,15 @@ import { describe, expect, it } from 'vitest';
 import { PdfExtractor } from './pdf-extractor.ts';
 import { identifySequencingLines } from './identify-sequencing-lines.ts';
 
-describe('identificar linhas do mapa', () => {
-  it('identifica as ordens, datas e valores das cinco páginas do exemplo', async () => {
+describe('identify sequencing lines', () => {
+  it('extracts orders, dates and values from the five reference pages', async () => {
     const arquivo = await readFile(
       resolve(
         process.cwd(),
         '../../PO Furadeira Nanxing Mod. NCB2412S B (2).pdf',
       ),
     );
-    const paginas = await new PdfExtractor().extrair(arquivo);
+    const paginas = await new PdfExtractor().extract(arquivo);
     const linhas = identifySequencingLines(paginas);
     expect(linhas).toHaveLength(24);
     expect(

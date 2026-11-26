@@ -16,10 +16,10 @@ export class GetReportController {
   @Get(':id')
   @UseGuards(ExistingUserGuard)
   async handle(@Param('id') id: string) {
-    const resultado = await this.getReport.execute(id);
-    if (resultado.isLeft()) {
-      throw new NotFoundException(resultado.value.message);
+    const result = await this.getReport.execute(id);
+    if (result.isLeft()) {
+      throw new NotFoundException(result.value.message);
     }
-    return ReportPresenter.toHTTP(resultado.value.report);
+    return ReportPresenter.toHTTP(result.value.report);
   }
 }

@@ -15,7 +15,7 @@ describe('login (HTTP)', () => {
     const usuario = User.create({
       email: 'pessoa@example.test',
       passwordHash: hash,
-      role: 'USUARIO',
+      role: 'USER',
       canEdit: false,
       canExport: false,
     });

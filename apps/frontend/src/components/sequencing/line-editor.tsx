@@ -3,51 +3,51 @@ import type { Report } from "./sequencing-shared.ts";
 import { request, formatDuration, parseDuration } from "./sequencing-shared.ts";
 
 export function LineEditor({
-  relatorio,
+  report: currentReport,
   token,
-  aoSalvar,
+  onSave: handleSave,
 }: {
-  relatorio: Report;
+  report: Report;
   token: string;
-  aoSalvar: (relatorio: Report) => void;
+  onSave: (report: Report) => void;
 }) {
-  const [mensagem, setMensagem] = useState("");
-  const [ocupado, setOcupado] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
 
-  async function salvar(evento: FormEvent<HTMLFormElement>, indice: number) {
-    evento.preventDefault();
-    const dados = new FormData(evento.currentTarget);
-    setOcupado(true);
-    setMensagem("");
+  async function save(event: FormEvent<HTMLFormElement>, index: number) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    setIsBusy(true);
+    setStatusMessage("");
     try {
-      const corpo = {
-        versaoEsperada: relatorio.versao,
-        necessaria: Number(dados.get("necessaria")),
-        realizada: Number(dados.get("realizada")),
-        tempoUnitarioSegundos: parseDuration(dados.get("unitario")),
-        tempoSetupSegundos: parseDuration(dados.get("setup")),
+      const payload = {
+        versaoEsperada: currentReport.versao,
+        necessaria: Number(formData.get("necessaria")),
+        realizada: Number(formData.get("realizada")),
+        tempoUnitarioSegundos: parseDuration(formData.get("unitario")),
+        tempoSetupSegundos: parseDuration(formData.get("setup")),
       };
-      const atualizado = await request<Report>(
-        `/relatorios/${encodeURIComponent(relatorio.id)}/linhas/${indice}`,
+      const updated = await request<Report>(
+        `/relatorios/${encodeURIComponent(currentReport.id)}/linhas/${index}`,
         {
           method: "PATCH",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(corpo),
+          body: JSON.stringify(payload),
         },
       );
-      aoSalvar(atualizado);
-      setMensagem("Linha salva e resumos recalculados.");
-    } catch (erro) {
-      setMensagem(
-        erro instanceof Error
-          ? erro.message
+      handleSave(updated);
+      setStatusMessage("Linha salva e resumos recalculados.");
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error
+          ? error.message
           : "Não foi possível salvar a linha.",
       );
     } finally {
-      setOcupado(false);
+      setIsBusy(false);
     }
   }
 
@@ -58,22 +58,22 @@ export function LineEditor({
         Edite uma linha por vez. Os demais campos ainda estão em
         desenvolvimento.
       </p>
-      {mensagem && (
+      {statusMessage && (
         <p role="status" className="notice">
-          {mensagem}
+          {statusMessage}
         </p>
       )}
       <div className="line-list">
-        {relatorio.conteudo.linhas.map((linha, indice) => (
+        {currentReport.conteudo.linhas.map((line, index) => (
           <form
             className="line-editor"
-            key={`${relatorio.id}-${relatorio.versao}-${indice}`}
-            onSubmit={(evento) => void salvar(evento, indice)}
+            key={`${currentReport.id}-${currentReport.versao}-${index}`}
+            onSubmit={(event) => void save(event, index)}
           >
             <div>
-              <strong>OP {linha.ordem}</strong>
+              <strong>OP {line.ordem}</strong>
               <p>
-                Entrega {linha.dataEntrega} · Lote {linha.lote}
+                Entrega {line.dataEntrega} · Lote {line.lote}
               </p>
             </div>
             <label>
@@ -83,7 +83,7 @@ export function LineEditor({
                 type="number"
                 min="0"
                 step="1"
-                defaultValue={linha.necessaria}
+                defaultValue={line.necessaria}
                 required
               />
             </label>
@@ -94,7 +94,7 @@ export function LineEditor({
                 type="number"
                 min="0"
                 step="1"
-                defaultValue={linha.realizada}
+                defaultValue={line.realizada}
                 required
               />
             </label>
@@ -102,7 +102,7 @@ export function LineEditor({
               Tempo por peça
               <input
                 name="unitario"
-                defaultValue={formatDuration(linha.tempoUnitarioSegundos)}
+                defaultValue={formatDuration(line.tempoUnitarioSegundos)}
                 required
               />
             </label>
@@ -110,18 +110,18 @@ export function LineEditor({
               Setup
               <input
                 name="setup"
-                defaultValue={formatDuration(linha.tempoSetupSegundos)}
+                defaultValue={formatDuration(line.tempoSetupSegundos)}
                 required
               />
             </label>
             <div>
-              <span>Saldo: {linha.saldo}</span>
+              <span>Saldo: {line.saldo}</span>
               <br />
               <span>
-                Produção: {formatDuration(linha.tempoProducaoSegundos)}
+                Produção: {formatDuration(line.tempoProducaoSegundos)}
               </span>
             </div>
-            <button disabled={ocupado}>Salvar linha</button>
+            <button disabled={isBusy}>Salvar linha</button>
           </form>
         ))}
       </div>

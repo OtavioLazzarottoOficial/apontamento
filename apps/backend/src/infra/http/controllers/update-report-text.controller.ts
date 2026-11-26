@@ -37,13 +37,19 @@ export class UpdateReportTextController {
     @Param('id') id: string,
     @Body(new ZodValidationPipe(schema)) body: z.infer<typeof schema>,
   ) {
-    const resultado = await this.change.execute({ id, ...body });
-    if (resultado.isLeft()) {
-      if (resultado.value instanceof VersionConflictError)
-        throw new ConflictException(resultado.value.message);
-      throw new NotFoundException(resultado.value.message);
+    const result = await this.change.execute({
+      id,
+      expectedVersion: body.versaoEsperada,
+      page: body.pagina,
+      index: body.indice,
+      text: body.texto,
+    });
+    if (result.isLeft()) {
+      if (result.value instanceof VersionConflictError)
+        throw new ConflictException(result.value.message);
+      throw new NotFoundException(result.value.message);
     }
-    const response = ReportPresenter.toHTTP(resultado.value.report);
+    const response = ReportPresenter.toHTTP(result.value.report);
     if (!response.conteudo.paginas) {
       throw new BadRequestException('Conteúdo inválido.');
     }

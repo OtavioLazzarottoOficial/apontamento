@@ -1,3 +1,5 @@
+import { readTestReportData } from './services-in-memory/in-memory-report-document.ts';
+import { LegacyReportDocument } from '../src/infra/pdf/legacy-report-document.ts';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -9,7 +11,7 @@ import { UsersRepository } from '../src/domain/auth/application/repositories/use
 import { MachinesRepository } from '../src/domain/production/application/repositories/machines-repository.ts';
 import type { Machine } from '../src/domain/production/enterprise/machine.ts';
 import { ReportsRepository } from '../src/domain/sequencing/application/repositories/reports-repository.ts';
-import { Report } from '../src/domain/sequencing/enterprise/report.ts';
+import { ReportSnapshot } from '../src/domain/sequencing/application/models/report-snapshot.ts';
 import { InMemoryReportsRepository } from './repositories-in-memory/in-memory-reports-repository.ts';
 import { PrismaService } from '../src/infra/database/prisma/prisma.service.ts';
 import { AppModule } from '../src/infra/app.module.ts';
@@ -36,7 +38,7 @@ describe('machines HTTP', () => {
       {
         email: 'editor@example.test',
         passwordHash: 'hash',
-        role: 'USUARIO',
+        role: 'USER',
         canEdit: true,
         canExport: false,
       },
@@ -97,8 +99,8 @@ describe('machines HTTP', () => {
       .auth(token, { type: 'bearer' })
       .expect(200);
     expect(list.body.machines[0].name).toBe('Furadeira manual');
-    const report = Report.create({
-      content: { nome: 'antigo.pdf' },
+    const report = ReportSnapshot.create({
+      content: new LegacyReportDocument({ nome: 'antigo.pdf' }),
       version: 1,
     });
     reports.items.push(report);
@@ -107,7 +109,9 @@ describe('machines HTTP', () => {
       .auth(token, { type: 'bearer' })
       .send({ machineId: created.body.id, expectedVersion: 1 })
       .expect(200);
-    expect(reports.items[0].content.machineId).toBe(created.body.id);
+    expect(readTestReportData(reports.items[0].content).machineId).toBe(
+      created.body.id,
+    );
     await request(server)
       .patch(`/relatorios/${report.id.toString()}/maquina`)
       .auth(token, { type: 'bearer' })
@@ -125,12 +129,14 @@ describe('machines HTTP', () => {
       .expect(200);
     expect(unlinked.body.conteudo.machineId).toBeNull();
     expect(reports.items).toHaveLength(1);
-    expect(reports.items[0].content.nome).toBe('antigo.pdf');
+    expect(readTestReportData(reports.items[0].content).nome).toBe(
+      'antigo.pdf',
+    );
     user = User.create(
       {
         email: user.email,
         passwordHash: user.passwordHash,
-        role: 'USUARIO',
+        role: 'USER',
         canEdit: false,
         canExport: false,
       },

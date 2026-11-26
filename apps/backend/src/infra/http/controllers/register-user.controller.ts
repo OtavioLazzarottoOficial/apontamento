@@ -11,6 +11,7 @@ import { RegisterUserUseCase } from '../../../domain/auth/application/usecases/r
 import { EmailAlreadyRegisteredError } from '../../../domain/auth/application/usecases/errors/email-already-registered-error.ts';
 import { AdministratorGuard } from '../../auth/administrator.guard.ts';
 import { ZodValidationPipe } from '../pipes/zod-validation-pipe.ts';
+import { UserPresenter } from '../presenters/user-presenter.ts';
 
 const schema = z.object({
   email: z.string().trim().pipe(z.email()),
@@ -27,20 +28,18 @@ export class RegisterUserController {
   @Post()
   @UseGuards(AdministratorGuard)
   async handle(@Body(new ZodValidationPipe(schema)) body: Body) {
-    const resultado = await this.register.execute(body);
-    if (resultado.isLeft()) {
-      if (resultado.value instanceof EmailAlreadyRegisteredError) {
-        throw new ConflictException(resultado.value.message);
+    const result = await this.register.execute({
+      email: body.email,
+      password: body.senha,
+      canEdit: body.podeEditar,
+      canExport: body.podeExportar,
+    });
+    if (result.isLeft()) {
+      if (result.value instanceof EmailAlreadyRegisteredError) {
+        throw new ConflictException(result.value.message);
       }
-      throw new BadRequestException(resultado.value.message);
+      throw new BadRequestException(result.value.message);
     }
-    const usuario = resultado.value.usuario;
-    return {
-      id: usuario.id.toString(),
-      email: usuario.email,
-      papel: usuario.role,
-      podeEditar: usuario.canEdit,
-      podeExportar: usuario.canExport,
-    };
+    return UserPresenter.toHTTP(result.value.user);
   }
 }

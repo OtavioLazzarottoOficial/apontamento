@@ -9,15 +9,15 @@ export class UpdatePermissionsUseCase {
   constructor(private readonly users: UsersRepository) {}
   async execute(request: {
     id: string;
-    podeEditar: boolean;
-    podeExportar: boolean;
-  }): Promise<Either<UserNotFoundError, { usuario: User }>> {
-    const usuario = await this.users.updatePermissions(
+    canEdit: boolean;
+    canExport: boolean;
+  }): Promise<Either<UserNotFoundError, { user: User }>> {
+    const user = await this.users.updatePermissions(
       request.id,
-      request.podeEditar,
-      request.podeExportar,
+      request.canEdit,
+      request.canExport,
     );
-    if (!usuario) return left(new UserNotFoundError());
-    return right({ usuario });
+    if (!user) return left(new UserNotFoundError());
+    return right({ user });
   }
 }

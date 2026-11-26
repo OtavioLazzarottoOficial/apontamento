@@ -23,113 +23,113 @@ import { TextEditor } from "./text-editor.tsx";
 
 export function SequencingWorkspace() {
   const [token, setToken] = useState("");
-  const [perfil, setPerfil] = useState<UserProfile | null>(null);
-  const [eficiencia, setEficiencia] = useState<number | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [efficiencyValue, setEfficiencyValue] = useState<number | null>(null);
   const [machines, setMachines] = useState<Machine[]>([]);
-  const [relatorios, setRelatorios] = useState<ReportSummary[]>([]);
+  const [reportList, setReportList] = useState<ReportSummary[]>([]);
   const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
+  const [password, setPassword] = useState("");
   const [id, setId] = useState("");
-  const [relatorio, setRelatorio] = useState<Report | null>(null);
-  const [busca, setBusca] = useState("");
-  const [tela, setTela] = useState<"mapa" | "ordens" | "edicao" | "pdf">(
-    "mapa",
-  );
+  const [currentReport, setCurrentReport] = useState<Report | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeView, setActiveView] = useState<
+    "mapa" | "ordens" | "edicao" | "pdf"
+  >("mapa");
   const [workspaceSection, setWorkspaceSection] = useState<
     "reports" | "administration" | "machines" | "dashboard"
   >("dashboard");
-  const [paginaData, setPaginaData] = useState(0);
-  const [campoSelecionado, setCampoSelecionado] = useState<{
-    indice: number;
-    campo: EditableField;
+  const [selectedDateIndex, setSelectedDateIndex] = useState(0);
+  const [selectedField, setSelectedField] = useState<{
+    index: number;
+    field: EditableField;
   } | null>(null);
-  const [textoSelecionado, setTextoSelecionado] = useState<{
-    referencia: FieldReference;
-    rotulo: string;
+  const [selectedText, setSelectedText] = useState<{
+    reference: FieldReference;
+    label: string;
   } | null>(null);
-  const [mensagem, setMensagem] = useState("");
-  const [ocupado, setOcupado] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [importMachineId, setImportMachineId] = useState("");
   const [importPanelKey, setImportPanelKey] = useState(0);
 
   function beginMachineImport(machineId: string) {
-    setRelatorio(null);
+    setCurrentReport(null);
     setImportMachineId(machineId);
     setImportPanelKey((current) => current + 1);
-    setMensagem("");
+    setStatusMessage("");
     setWorkspaceSection("reports");
   }
 
   useEffect(() => {
     if (!token) return;
-    const abortador = new AbortController();
-    const atualizar = () => {
+    const abortController = new AbortController();
+    const refresh = () => {
       void request<{ eficienciaPercentual: number }>(
         "/configuracao/capacidade",
         {
           headers: { Authorization: `Bearer ${token}` },
-          signal: abortador.signal,
+          signal: abortController.signal,
         },
       )
-        .then((config) => setEficiencia(config.eficienciaPercentual))
+        .then((config) => setEfficiencyValue(config.eficienciaPercentual))
         .catch(() => {
-          if (!abortador.signal.aborted) setEficiencia(null);
+          if (!abortController.signal.aborted) setEfficiencyValue(null);
         });
     };
-    const intervalo = window.setInterval(atualizar, 30000);
+    const interval = window.setInterval(refresh, 30000);
     return () => {
-      abortador.abort();
-      window.clearInterval(intervalo);
+      abortController.abort();
+      window.clearInterval(interval);
     };
   }, [token]);
 
-  async function executar(acao: () => Promise<void>) {
-    setOcupado(true);
-    setMensagem("");
+  async function run(action: () => Promise<void>) {
+    setIsBusy(true);
+    setStatusMessage("");
     try {
-      await acao();
-    } catch (erro) {
-      setMensagem(
-        erro instanceof Error
-          ? erro.message
+      await action();
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error
+          ? error.message
           : "Não foi possível concluir a operação.",
       );
     } finally {
-      setOcupado(false);
+      setIsBusy(false);
     }
   }
 
-  async function entrar(evento: FormEvent<HTMLFormElement>) {
-    evento.preventDefault();
-    await executar(async () => {
-      const resultado = await request<{ token: string }>("/sessions", {
+  async function login(formEvent: FormEvent<HTMLFormElement>) {
+    formEvent.preventDefault();
+    await run(async () => {
+      const operationResult = await request<{ token: string }>("/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, senha }),
+        body: JSON.stringify({ email, senha: password }),
       });
-      const perfilAtual = await request<UserProfile>("/me", {
-        headers: { Authorization: `Bearer ${resultado.token}` },
+      const currentProfile = await request<UserProfile>("/me", {
+        headers: { Authorization: `Bearer ${operationResult.token}` },
       });
       const config = await request<{ eficienciaPercentual: number }>(
         "/configuracao/capacidade",
-        { headers: { Authorization: `Bearer ${resultado.token}` } },
+        { headers: { Authorization: `Bearer ${operationResult.token}` } },
       );
       const machineList = await request<{ machines: Machine[] }>("/maquinas", {
-        headers: { Authorization: `Bearer ${resultado.token}` },
+        headers: { Authorization: `Bearer ${operationResult.token}` },
       });
       setMachines(machineList.machines);
-      setEficiencia(config.eficienciaPercentual);
-      setPerfil(perfilAtual);
-      setToken(resultado.token);
-      const lista = await request<{ relatorios: ReportSummary[] }>(
+      setEfficiencyValue(config.eficienciaPercentual);
+      setUserProfile(currentProfile);
+      setToken(operationResult.token);
+      const reportResponse = await request<{ relatorios: ReportSummary[] }>(
         "/relatorios",
         {
-          headers: { Authorization: `Bearer ${resultado.token}` },
+          headers: { Authorization: `Bearer ${operationResult.token}` },
         },
       );
-      setRelatorios(lista.relatorios);
-      setSenha("");
+      setReportList(reportResponse.relatorios);
+      setPassword("");
     });
   }
 
@@ -141,10 +141,10 @@ export function SequencingWorkspace() {
   }
 
   async function associateMachine(machineId: string) {
-    if (!relatorio || !machineId) return;
-    await executar(async () => {
+    if (!currentReport || !machineId) return;
+    await run(async () => {
       const updated = await request<Report>(
-        `/relatorios/${encodeURIComponent(relatorio.id)}/maquina`,
+        `/relatorios/${encodeURIComponent(currentReport.id)}/maquina`,
         {
           method: "PATCH",
           headers: {
@@ -153,12 +153,12 @@ export function SequencingWorkspace() {
           },
           body: JSON.stringify({
             machineId,
-            expectedVersion: relatorio.versao,
+            expectedVersion: currentReport.versao,
           }),
         },
       );
       updateReportState(updated);
-      setMensagem("Máquina vinculada ao relatório.");
+      setStatusMessage("Máquina vinculada ao relatório.");
     });
   }
 
@@ -171,7 +171,7 @@ export function SequencingWorkspace() {
       )
     )
       return;
-    await executar(async () => {
+    await run(async () => {
       const updated = await request<Report>(
         `/relatorios/${encodeURIComponent(report.id)}/maquina`,
         {
@@ -186,31 +186,31 @@ export function SequencingWorkspace() {
           }),
         },
       );
-      setRelatorios((current) =>
+      setReportList((current) =>
         current.map((item) =>
           item.id === report.id
             ? { ...item, machineId: null, versao: updated.versao }
             : item,
         ),
       );
-      if (relatorio?.id === report.id) setRelatorio(updated);
-      setMensagem(
+      if (currentReport?.id === report.id) setCurrentReport(updated);
+      setStatusMessage(
         "Relatório desvinculado. O PDF continua nos relatórios compartilhados.",
       );
     });
   }
 
-  async function abrir(idRelatorio: string, chave = token) {
-    const resultado = await request<Report>(
-      `/relatorios/${encodeURIComponent(idRelatorio)}`,
-      { headers: { Authorization: `Bearer ${chave}` } },
+  async function openReport(reportId: string, accessToken = token) {
+    const operationResult = await request<Report>(
+      `/relatorios/${encodeURIComponent(reportId)}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
     );
-    updateReportState(resultado);
+    updateReportState(operationResult);
     setWorkspaceSection("reports");
-    setBusca("");
-    setTela("mapa");
-    setPaginaData(0);
-    setId(resultado.id);
+    setSearchTerm("");
+    setActiveView("mapa");
+    setSelectedDateIndex(0);
+    setId(operationResult.id);
   }
 
   async function removeReport(
@@ -222,7 +222,7 @@ export function SequencingWorkspace() {
       )
     )
       return;
-    await executar(async () => {
+    await run(async () => {
       await request<void>(`/relatorios/${encodeURIComponent(report.id)}`, {
         method: "DELETE",
         headers: {
@@ -231,22 +231,22 @@ export function SequencingWorkspace() {
         },
         body: JSON.stringify({ expectedVersion: report.versao }),
       });
-      setRelatorios((current) =>
+      setReportList((current) =>
         current.filter((item) => item.id !== report.id),
       );
-      if (relatorio?.id === report.id) {
-        setRelatorio(null);
+      if (currentReport?.id === report.id) {
+        setCurrentReport(null);
         setId("");
-        setCampoSelecionado(null);
-        setTextoSelecionado(null);
+        setSelectedField(null);
+        setSelectedText(null);
       }
-      setMensagem("Relatório removido para todos os usuários.");
+      setStatusMessage("Relatório removido para todos os usuários.");
     });
   }
 
   function updateReportState(report: Report) {
-    setRelatorio(report);
-    setRelatorios((current) =>
+    setCurrentReport(report);
+    setReportList((current) =>
       current.map((item) => {
         if (item.id !== report.id) return item;
         const areas = new Map<string, number>();
@@ -265,71 +265,77 @@ export function SequencingWorkspace() {
     );
   }
 
-  async function importar(evento: FormEvent<HTMLFormElement>) {
-    evento.preventDefault();
-    const form = evento.currentTarget;
-    const dados = new FormData(form);
-    await executar(async () => {
-      const resultado = await request<{ id: string }>("/relatorios/importar", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: dados,
-      });
-      await abrir(resultado.id);
-      const lista = await request<{ relatorios: ReportSummary[] }>(
+  async function importReport(formEvent: FormEvent<HTMLFormElement>) {
+    formEvent.preventDefault();
+    const form = formEvent.currentTarget;
+    const formData = new FormData(form);
+    await run(async () => {
+      const operationResult = await request<{ id: string }>(
+        "/relatorios/importar",
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        },
+      );
+      await openReport(operationResult.id);
+      const reportResponse = await request<{ relatorios: ReportSummary[] }>(
         "/relatorios",
         {
           headers: { Authorization: `Bearer ${token}` },
         },
       );
-      setRelatorios(lista.relatorios);
+      setReportList(reportResponse.relatorios);
       form.reset();
       setFileInputKey((current) => current + 1);
       setImportMachineId("");
-      setMensagem("PDF importado com sucesso.");
+      setStatusMessage("PDF importado com sucesso.");
     });
   }
 
-  async function alterarConclusao(indice: number, concluida: boolean) {
-    if (!relatorio) return;
-    await executar(async () => {
-      const atualizado = await request<Report>(
-        `/relatorios/${encodeURIComponent(relatorio.id)}/linhas/${indice}/conclusao`,
+  async function updateCompletion(index: number, completed: boolean) {
+    if (!currentReport) return;
+    await run(async () => {
+      const updatedReport = await request<Report>(
+        `/relatorios/${encodeURIComponent(currentReport.id)}/linhas/${index}/conclusao`,
         {
           method: "PATCH",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ versaoEsperada: relatorio.versao, concluida }),
+          body: JSON.stringify({
+            versaoEsperada: currentReport.versao,
+            concluida: completed,
+          }),
         },
       );
-      updateReportState(atualizado);
-      setMensagem(
-        concluida ? "Ordem marcada como concluída." : "Ordem reaberta.",
+      updateReportState(updatedReport);
+      setStatusMessage(
+        completed ? "Ordem marcada como concluída." : "Ordem reaberta.",
       );
     });
   }
 
-  async function exportar() {
-    if (!relatorio) return;
-    await executar(async () => {
-      const resposta = await fetch(
-        `${base}/relatorios/${encodeURIComponent(relatorio.id)}/exportar`,
+  async function exportReport() {
+    if (!currentReport) return;
+    await run(async () => {
+      const response = await fetch(
+        `${base}/relatorios/${encodeURIComponent(currentReport.id)}/exportar`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
-      if (!resposta.ok) {
-        const erro: unknown = await resposta.json().catch(() => null);
+      if (!response.ok) {
+        const error: unknown = await response.json().catch(() => null);
         throw new Error(
-          typeof erro === "object" &&
-            erro !== null &&
-            "message" in erro &&
-            typeof erro.message === "string"
-            ? erro.message
+          typeof error === "object" &&
+            error !== null &&
+            "message" in error &&
+            typeof error.message === "string"
+            ? error.message
             : "Não foi possível exportar o PDF.",
         );
       }
-      const url = URL.createObjectURL(await resposta.blob());
+      const url = URL.createObjectURL(await response.blob());
       const link = document.createElement("a");
       link.href = url;
       link.download = "relatorio.pdf";
@@ -350,7 +356,7 @@ export function SequencingWorkspace() {
           <p>
             Acesse sua conta para acompanhar os sequenciamentos de produção.
           </p>
-          <form onSubmit={entrar} className="form-stack">
+          <form onSubmit={login} className="form-stack">
             <label>
               E-mail
               <input
@@ -366,18 +372,18 @@ export function SequencingWorkspace() {
               <input
                 type="password"
                 autoComplete="current-password"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </label>
-            <button disabled={ocupado}>
-              {ocupado ? "Entrandoâ€¦" : "Entrar"}
+            <button disabled={isBusy}>
+              {isBusy ? "Entrandoâ€¦" : "Entrar"}
             </button>
           </form>
-          {mensagem && (
+          {statusMessage && (
             <p role="alert" className="notice">
-              {mensagem}
+              {statusMessage}
             </p>
           )}
         </section>
@@ -424,7 +430,7 @@ export function SequencingWorkspace() {
             >
               Sequenciamentos
             </button>
-            {perfil?.papel === "ADMINISTRADOR" && (
+            {userProfile?.papel === "ADMINISTRADOR" && (
               <button
                 type="button"
                 className={
@@ -440,16 +446,16 @@ export function SequencingWorkspace() {
             )}
           </nav>
           <div className="app-account">
-            <span title={perfil?.email}>{perfil?.email}</span>
+            <span title={userProfile?.email}>{userProfile?.email}</span>
             <button
               type="button"
               onClick={() => {
                 setToken("");
-                setPerfil(null);
-                setEficiencia(null);
-                setRelatorios([]);
+                setUserProfile(null);
+                setEfficiencyValue(null);
+                setReportList([]);
                 setMachines([]);
-                setRelatorio(null);
+                setCurrentReport(null);
                 setId("");
                 setWorkspaceSection("dashboard");
               }}
@@ -460,9 +466,9 @@ export function SequencingWorkspace() {
         </div>
       </header>
       <section className="workspace">
-        {mensagem && workspaceSection !== "reports" && (
+        {statusMessage && workspaceSection !== "reports" && (
           <p role="status" className="notice">
-            {mensagem}
+            {statusMessage}
           </p>
         )}
         <div hidden={workspaceSection !== "reports"}>
@@ -474,14 +480,15 @@ export function SequencingWorkspace() {
             </div>
           </div>
           <details
-            key={`${relatorio ? "com-relatorio" : "sem-relatorio"}:${importPanelKey}`}
+            key={`${currentReport ? "com-relatorio" : "sem-relatorio"}:${importPanelKey}`}
             className="report-options"
-            open={!relatorio}
+            open={!currentReport}
           >
             <summary>Importar ou abrir PDF</summary>
             <div className="tool-grid">
-              {(perfil?.papel === "ADMINISTRADOR" || perfil?.podeEditar) && (
-                <form onSubmit={importar} className="tool-card">
+              {(userProfile?.papel === "ADMINISTRADOR" ||
+                userProfile?.podeEditar) && (
+                <form onSubmit={importReport} className="tool-card">
                   <h2>Importar PDF</h2>
                   <p>
                     Escolha a máquina cadastrada e depois selecione o PDF do
@@ -512,16 +519,16 @@ export function SequencingWorkspace() {
                   )}
                   <PdfFileInput
                     key={fileInputKey}
-                    disabled={ocupado || !importMachineId}
+                    disabled={isBusy || !importMachineId}
                   />
-                  <button disabled={ocupado}>Importar relatório</button>
+                  <button disabled={isBusy}>Importar relatório</button>
                 </form>
               )}
               <form
                 className="tool-card"
-                onSubmit={(evento) => {
-                  evento.preventDefault();
-                  void executar(() => abrir(id));
+                onSubmit={(formEvent) => {
+                  formEvent.preventDefault();
+                  void run(() => openReport(id));
                 }}
               >
                 <h2>Abrir relatório</h2>
@@ -534,50 +541,52 @@ export function SequencingWorkspace() {
                     required
                   />
                 </label>
-                <button disabled={ocupado} className="secondary">
+                <button disabled={isBusy} className="secondary">
                   Abrir relatório
                 </button>
               </form>
             </div>
             <ReportList
-              reports={relatorios}
+              reports={reportList}
               machines={machines}
               canEdit={
-                perfil?.papel === "ADMINISTRADOR" || !!perfil?.podeEditar
+                userProfile?.papel === "ADMINISTRADOR" ||
+                !!userProfile?.podeEditar
               }
-              busy={ocupado}
-              onOpen={(reportId) => void executar(() => abrir(reportId))}
+              busy={isBusy}
+              onOpen={(reportId) => void run(() => openReport(reportId))}
               onDelete={(report) => void removeReport(report)}
             />
           </details>
-          {mensagem && (
+          {statusMessage && (
             <p role="status" className="notice">
-              {mensagem}
+              {statusMessage}
             </p>
           )}
-          {relatorio && (
+          {currentReport && (
             <section className="document">
               <div className="document-heading">
                 <div>
                   <p className="eyebrow">RELATÓRIO DE PRODUÇÃO</p>
-                  <h2>{relatorio.conteudo.nome || "Relatório sem nome"}</h2>
+                  <h2>{currentReport.conteudo.nome || "Relatório sem nome"}</h2>
                   <p>
-                    Versão {relatorio.versao} ·{" "}
-                    {relatorio.conteudo.paginas.length} páginas
+                    Versão {currentReport.versao} ·{" "}
+                    {currentReport.conteudo.paginas.length} páginas
                   </p>
                   <p>
                     Máquina:{" "}
                     {machines.find(
-                      (machine) => machine.id === relatorio.conteudo.machineId,
+                      (machine) =>
+                        machine.id === currentReport.conteudo.machineId,
                     )?.name ?? "Não vinculada"}
                   </p>
-                  {(perfil?.papel === "ADMINISTRADOR" ||
-                    perfil?.podeEditar) && (
+                  {(userProfile?.papel === "ADMINISTRADOR" ||
+                    userProfile?.podeEditar) && (
                     <label className="machine-association">
                       Alterar máquina deste relatório
                       <select
-                        value={relatorio.conteudo.machineId ?? ""}
-                        disabled={ocupado}
+                        value={currentReport.conteudo.machineId ?? ""}
+                        disabled={isBusy}
                         onChange={(event) =>
                           void associateMachine(event.target.value)
                         }
@@ -593,21 +602,22 @@ export function SequencingWorkspace() {
                   )}
                   <details className="report-id">
                     <summary>Identificador do relatório</summary>
-                    <code>{relatorio.id}</code>
+                    <code>{currentReport.id}</code>
                   </details>
                 </div>
-                {(perfil?.papel === "ADMINISTRADOR" || perfil?.podeEditar) && (
+                {(userProfile?.papel === "ADMINISTRADOR" ||
+                  userProfile?.podeEditar) && (
                   <div className="document-actions">
-                    {relatorio.conteudo.machineId && (
+                    {currentReport.conteudo.machineId && (
                       <button
                         type="button"
                         className="secondary"
-                        disabled={ocupado}
+                        disabled={isBusy}
                         onClick={() =>
                           void unlinkReport({
-                            id: relatorio.id,
-                            nome: relatorio.conteudo.nome,
-                            versao: relatorio.versao,
+                            id: currentReport.id,
+                            nome: currentReport.conteudo.nome,
+                            versao: currentReport.versao,
                           })
                         }
                       >
@@ -617,12 +627,12 @@ export function SequencingWorkspace() {
                     <button
                       type="button"
                       className="delete-report-button"
-                      disabled={ocupado}
+                      disabled={isBusy}
                       onClick={() =>
                         void removeReport({
-                          id: relatorio.id,
-                          nome: relatorio.conteudo.nome,
-                          versao: relatorio.versao,
+                          id: currentReport.id,
+                          nome: currentReport.conteudo.nome,
+                          versao: currentReport.versao,
                         })
                       }
                     >
@@ -630,13 +640,13 @@ export function SequencingWorkspace() {
                     </button>
                   </div>
                 )}
-                {(perfil?.papel === "ADMINISTRADOR" ||
-                  perfil?.podeExportar) && (
+                {(userProfile?.papel === "ADMINISTRADOR" ||
+                  userProfile?.podeExportar) && (
                   <button
                     className="secondary"
                     disabled
                     title="Disponível após a implementação do recálculo da serraria"
-                    onClick={() => void exportar()}
+                    onClick={() => void exportReport()}
                   >
                     Exportar PDF
                   </button>
@@ -648,111 +658,120 @@ export function SequencingWorkspace() {
               >
                 <button
                   type="button"
-                  className={tela === "mapa" ? "" : "secondary"}
-                  aria-current={tela === "mapa" ? "page" : undefined}
-                  onClick={() => setTela("mapa")}
+                  className={activeView === "mapa" ? "" : "secondary"}
+                  aria-current={activeView === "mapa" ? "page" : undefined}
+                  onClick={() => setActiveView("mapa")}
                 >
                   Mapa de sequenciamento
                 </button>
                 <button
                   type="button"
-                  className={tela === "ordens" ? "" : "secondary"}
-                  aria-current={tela === "ordens" ? "page" : undefined}
-                  onClick={() => setTela("ordens")}
+                  className={activeView === "ordens" ? "" : "secondary"}
+                  aria-current={activeView === "ordens" ? "page" : undefined}
+                  onClick={() => setActiveView("ordens")}
                 >
                   Visualizar ordens
                 </button>
                 <button
                   type="button"
-                  className={tela === "pdf" ? "" : "secondary"}
-                  aria-current={tela === "pdf" ? "page" : undefined}
-                  onClick={() => setTela("pdf")}
+                  className={activeView === "pdf" ? "" : "secondary"}
+                  aria-current={activeView === "pdf" ? "page" : undefined}
+                  onClick={() => setActiveView("pdf")}
                 >
                   Conferir PDF original
                 </button>
-                {(perfil?.papel === "ADMINISTRADOR" || perfil?.podeEditar) && (
+                {(userProfile?.papel === "ADMINISTRADOR" ||
+                  userProfile?.podeEditar) && (
                   <button
                     type="button"
-                    className={tela === "edicao" ? "" : "secondary"}
-                    aria-current={tela === "edicao" ? "page" : undefined}
-                    onClick={() => setTela("edicao")}
+                    className={activeView === "edicao" ? "" : "secondary"}
+                    aria-current={activeView === "edicao" ? "page" : undefined}
+                    onClick={() => setActiveView("edicao")}
                   >
                     Editar quantidades e tempos
                   </button>
                 )}
               </nav>
-              {tela === "ordens" && (
+              {activeView === "ordens" && (
                 <OrdersSummary
-                  linhas={relatorio.conteudo.linhas}
-                  busca={busca}
-                  aoBuscar={setBusca}
+                  lines={currentReport.conteudo.linhas}
+                  search={searchTerm}
+                  onSearch={setSearchTerm}
                 />
               )}
-              {tela === "edicao" &&
-                (perfil?.papel === "ADMINISTRADOR" || perfil?.podeEditar) && (
+              {activeView === "edicao" &&
+                (userProfile?.papel === "ADMINISTRADOR" ||
+                  userProfile?.podeEditar) && (
                   <section className="report-section">
                     <LineEditor
-                      relatorio={relatorio}
+                      report={currentReport}
                       token={token}
-                      aoSalvar={updateReportState}
+                      onSave={updateReportState}
                     />
                   </section>
                 )}
-              {(tela === "mapa" || tela === "pdf") && (
-                <div className={tela === "pdf" ? "pdf-comparison" : undefined}>
-                  {tela === "pdf" && (
+              {(activeView === "mapa" || activeView === "pdf") && (
+                <div
+                  className={
+                    activeView === "pdf" ? "pdf-comparison" : undefined
+                  }
+                >
+                  {activeView === "pdf" && (
                     <OriginalPdf
-                      key={relatorio.id}
-                      reportId={relatorio.id}
+                      key={currentReport.id}
+                      reportId={currentReport.id}
                       token={token}
                     />
                   )}
                   <section className="report-section report-pages">
                     <SequencingPage
-                      eficiencia={eficiencia}
-                      paginas={relatorio.conteudo.paginas}
-                      linhas={relatorio.conteudo.linhas}
-                      paginaData={paginaData}
-                      aoMudarPagina={setPaginaData}
-                      editavel={
-                        perfil?.papel === "ADMINISTRADOR" ||
-                        !!perfil?.podeEditar
+                      efficiency={efficiencyValue}
+                      pages={currentReport.conteudo.paginas}
+                      lines={currentReport.conteudo.linhas}
+                      dateIndex={selectedDateIndex}
+                      onDateChange={setSelectedDateIndex}
+                      editable={
+                        userProfile?.papel === "ADMINISTRADOR" ||
+                        !!userProfile?.podeEditar
                       }
-                      ocupado={ocupado}
-                      aoConcluir={(indice, concluida) =>
-                        void alterarConclusao(indice, concluida)
+                      busy={isBusy}
+                      onComplete={(index, completed) =>
+                        void updateCompletion(index, completed)
                       }
-                      aoSelecionar={(indice, campo) =>
-                        setCampoSelecionado({ indice, campo })
+                      onSelect={(index, field) =>
+                        setSelectedField({ index, field })
                       }
-                      aoSelecionarTexto={(referencia, rotulo) =>
-                        setTextoSelecionado({ referencia, rotulo })
+                      onSelectText={(referencia, rotulo) =>
+                        setSelectedText({
+                          reference: referencia,
+                          label: rotulo,
+                        })
                       }
                     />
                   </section>
                 </div>
               )}
-              {campoSelecionado && (
+              {selectedField && (
                 <FieldEditor
-                  relatorio={relatorio}
+                  report={currentReport}
                   token={token}
-                  selecionado={campoSelecionado}
-                  aoFechar={() => setCampoSelecionado(null)}
-                  aoSalvar={(atualizado) => {
-                    updateReportState(atualizado);
-                    setCampoSelecionado(null);
+                  selected={selectedField}
+                  onClose={() => setSelectedField(null)}
+                  onSave={(updatedReport) => {
+                    updateReportState(updatedReport);
+                    setSelectedField(null);
                   }}
                 />
               )}
-              {textoSelecionado && (
+              {selectedText && (
                 <TextEditor
-                  relatorio={relatorio}
+                  report={currentReport}
                   token={token}
-                  selecionado={textoSelecionado}
-                  aoFechar={() => setTextoSelecionado(null)}
-                  aoSalvar={(atualizado) => {
-                    updateReportState(atualizado);
-                    setTextoSelecionado(null);
+                  selected={selectedText}
+                  onClose={() => setSelectedText(null)}
+                  onSave={(updatedReport) => {
+                    updateReportState(updatedReport);
+                    setSelectedText(null);
                   }}
                 />
               )}
@@ -763,7 +782,10 @@ export function SequencingWorkspace() {
           <MachinesPanel
             token={token}
             machines={machines}
-            canEdit={perfil?.papel === "ADMINISTRADOR" || !!perfil?.podeEditar}
+            canEdit={
+              userProfile?.papel === "ADMINISTRADOR" ||
+              !!userProfile?.podeEditar
+            }
             onCreated={reloadMachines}
             onImport={beginMachineImport}
           />
@@ -771,16 +793,19 @@ export function SequencingWorkspace() {
         {workspaceSection === "dashboard" && (
           <MachinesDashboard
             machines={machines}
-            reports={relatorios}
-            onOpen={(reportId) => void executar(() => abrir(reportId))}
-            canEdit={perfil?.papel === "ADMINISTRADOR" || !!perfil?.podeEditar}
-            busy={ocupado}
+            reports={reportList}
+            onOpen={(reportId) => void run(() => openReport(reportId))}
+            canEdit={
+              userProfile?.papel === "ADMINISTRADOR" ||
+              !!userProfile?.podeEditar
+            }
+            busy={isBusy}
             onUnlink={(report) => void unlinkReport(report)}
             onImport={beginMachineImport}
           />
         )}
         {workspaceSection === "administration" &&
-          perfil?.papel === "ADMINISTRADOR" && (
+          userProfile?.papel === "ADMINISTRADOR" && (
             <section className="administration-page" aria-label="Administração">
               <p className="eyebrow">CONFIGURAÇÕES</p>
               <h1>Administração</h1>
@@ -788,11 +813,11 @@ export function SequencingWorkspace() {
                 Gerencie os usuários e a eficiência usada nos sequenciamentos.
               </p>
               <UserManagement token={token} />
-              {eficiencia !== null && (
+              {efficiencyValue !== null && (
                 <CapacityConfigurationForm
                   token={token}
-                  eficiencia={eficiencia}
-                  aoSalvar={setEficiencia}
+                  efficiency={efficiencyValue}
+                  onSave={setEfficiencyValue}
                 />
               )}
             </section>

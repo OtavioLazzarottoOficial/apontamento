@@ -19,11 +19,10 @@ export class PreviewReportController {
   @Get(':id/preview')
   @UseGuards(ExistingUserGuard)
   async handle(@Param('id') id: string) {
-    const resultado = await this.get.execute(id);
-    if (resultado.isLeft())
-      throw new NotFoundException(resultado.value.message);
+    const result = await this.get.execute(id);
+    if (result.isLeft()) throw new NotFoundException(result.value.message);
     return {
-      paginas: await this.generator.gerarPreview(resultado.value.report),
+      paginas: await this.generator.generatePreview(result.value.report),
     };
   }
 }

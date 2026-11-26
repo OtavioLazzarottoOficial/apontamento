@@ -1,3 +1,4 @@
+import { LegacyReportDocument } from '../src/infra/pdf/legacy-report-document.ts';
 import { randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -41,8 +42,16 @@ describeDatabase('concorrência de relatórios no PostgreSQL', () => {
 
   it('permite apenas uma das duas gravações da mesma versão', async () => {
     const results = await Promise.all([
-      sut.execute({ id, expectedVersion: 1, content: { titulo: 'Primeira' } }),
-      sut.execute({ id, expectedVersion: 1, content: { titulo: 'Segunda' } }),
+      sut.execute({
+        id,
+        expectedVersion: 1,
+        content: new LegacyReportDocument({ titulo: 'Primeira' }),
+      }),
+      sut.execute({
+        id,
+        expectedVersion: 1,
+        content: new LegacyReportDocument({ titulo: 'Segunda' }),
+      }),
     ]);
     expect(results.filter((result) => result.isRight())).toHaveLength(1);
     expect(results.filter((result) => result.isLeft())).toHaveLength(1);

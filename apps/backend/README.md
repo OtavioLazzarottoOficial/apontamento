@@ -16,7 +16,7 @@ Build, testes e desenvolvimento geram o cliente Prisma automaticamente.
 ## Padrões
 
 O core é independente de framework. Os contratos de criptografia ficam em
-domain/auth/application/crypthograpy e as implementações em infra/cryptography.
+domain/auth/application/cryptography e as implementações em infra/cryptography.
 O pipe de validação está em infra/http/pipes/zod-validation-pipe.ts,
 para validar os dados recebidos pelas rotas.
 

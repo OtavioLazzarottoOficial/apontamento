@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import type { Report } from '../../enterprise/report.ts';
+import type { ReportSnapshot } from '../models/report-snapshot.ts';
 
 export interface ReportSummary {
   id: string;
-  versao: number;
-  nome: string;
+  version: number;
+  name: string;
   machineId: string | null;
   dailyAreas: { date: string; area: number }[];
 }
@@ -16,10 +16,10 @@ export abstract class ReportsRepository {
     id: string,
     expectedVersion: number,
   ): Promise<boolean>;
-  abstract create(relatorio: Report): Promise<void>;
-  abstract findById(id: string): Promise<Report | null>;
+  abstract create(report: ReportSnapshot): Promise<void>;
+  abstract findById(id: string): Promise<ReportSnapshot | null>;
   abstract updateIfVersionMatches(
-    relatorio: Report,
-    versaoEsperada: number,
+    report: ReportSnapshot,
+    expectedVersion: number,
   ): Promise<boolean>;
 }

@@ -2,21 +2,20 @@ import type { ReportLine } from "./sequencing-shared.ts";
 import { formatDuration } from "./sequencing-shared.ts";
 
 export function OrdersSummary({
-  linhas,
-  busca,
-  aoBuscar,
+  lines,
+  search: searchTerm,
+  onSearch,
 }: {
-  linhas: ReportLine[];
-  busca: string;
-  aoBuscar: (valor: string) => void;
+  lines: ReportLine[];
+  search: string;
+  onSearch: (value: string) => void;
 }) {
-  const termo = busca.trim().toLocaleLowerCase("pt-BR");
-  const filtradas = linhas.filter((linha) =>
-    [linha.ordem, linha.lote, linha.dataEntrega, linha.programacao].some(
-      (valor) =>
-        String(valor ?? "")
-          .toLocaleLowerCase("pt-BR")
-          .includes(termo),
+  const term = searchTerm.trim().toLocaleLowerCase("pt-BR");
+  const filtered = lines.filter((line) =>
+    [line.ordem, line.lote, line.dataEntrega, line.programacao].some((valor) =>
+      String(valor ?? "")
+        .toLocaleLowerCase("pt-BR")
+        .includes(term),
     ),
   );
   return (
@@ -30,8 +29,8 @@ export function OrdersSummary({
           Buscar ordem, lote ou entrega
           <input
             type="search"
-            value={busca}
-            onChange={(evento) => aoBuscar(evento.target.value)}
+            value={searchTerm}
+            onChange={(event) => onSearch(event.target.value)}
             placeholder="Ex.: número da OP"
           />
         </label>
@@ -51,23 +50,23 @@ export function OrdersSummary({
             </tr>
           </thead>
           <tbody>
-            {filtradas.map((linha, indice) => (
-              <tr key={indice}>
-                <th scope="row">{linha.ordem || "—"}</th>
-                <td>{linha.dataEntrega || "—"}</td>
-                <td>{linha.lote || "—"}</td>
-                <td>{linha.programacao || "—"}</td>
-                <td>{linha.necessaria.toLocaleString("pt-BR")}</td>
-                <td>{linha.realizada.toLocaleString("pt-BR")}</td>
-                <td>{linha.saldo.toLocaleString("pt-BR")}</td>
-                <td>{formatDuration(linha.tempoProducaoSegundos)}</td>
+            {filtered.map((line, index) => (
+              <tr key={index}>
+                <th scope="row">{line.ordem || "—"}</th>
+                <td>{line.dataEntrega || "—"}</td>
+                <td>{line.lote || "—"}</td>
+                <td>{line.programacao || "—"}</td>
+                <td>{line.necessaria.toLocaleString("pt-BR")}</td>
+                <td>{line.realizada.toLocaleString("pt-BR")}</td>
+                <td>{line.saldo.toLocaleString("pt-BR")}</td>
+                <td>{formatDuration(line.tempoProducaoSegundos)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {filtradas.length === 0 && (
+        {filtered.length === 0 && (
           <p className="table-empty">
-            {linhas.length
+            {lines.length
               ? "Nenhuma ordem encontrada para esta busca."
               : "Nenhuma ordem identificada neste relatório."}
           </p>

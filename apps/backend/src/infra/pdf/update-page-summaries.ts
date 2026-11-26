@@ -10,27 +10,27 @@ export interface PageWithFragments {
   trechos: { texto: string; x: number; y: number }[];
 }
 
-function tempo(segundos: number) {
+function tempo(seconds: number) {
   return [
-    Math.floor(segundos / 3600),
-    Math.floor((segundos % 3600) / 60),
-    segundos % 60,
+    Math.floor(seconds / 3600),
+    Math.floor((seconds % 3600) / 60),
+    seconds % 60,
   ]
     .map((n) => String(n).padStart(2, '0'))
     .join(':');
 }
 
-function formatarNumero(valor: number, original: string) {
-  const casas = original.includes(',') ? original.split(',')[1].length : 0;
+function formatarNumero(value: number, source: string) {
+  const casas = source.includes(',') ? source.split(',')[1].length : 0;
   return new Intl.NumberFormat('pt-BR', {
     minimumFractionDigits: casas,
     maximumFractionDigits: casas,
-  }).format(valor);
+  }).format(value);
 }
 
 /** Atualiza as seções "Resumo Por Data" e "Resumo Por Lotes" do modelo reconhecido. */
 export function updatePageSummaries(
-  paginas: PageWithFragments[],
+  pages: PageWithFragments[],
   resumos: {
     porData: Record<string, SummaryItem>;
     porLote: Record<string, SummaryItem>;
@@ -38,11 +38,11 @@ export function updatePageSummaries(
   },
 ) {
   let secao: 'data' | 'lote' | null = null;
-  const datas = new Set<string>();
+  const dates = new Set<string>();
   const lotes = new Set<string>();
-  for (const pagina of paginas) {
-    const itens = [...pagina.trechos].sort((a, b) => a.y - b.y);
-    for (const item of itens) {
+  for (const page of pages) {
+    const items = [...page.trechos].sort((a, b) => a.y - b.y);
+    for (const item of items) {
       if (/Resumo Por Data/i.test(item.texto)) {
         secao = 'data';
         continue;
@@ -56,75 +56,74 @@ export function updatePageSummaries(
         continue;
       }
       if (!secao) continue;
-      const x = item.x / pagina.largura;
+      const x = item.x / page.largura;
       const data = /^\d{2}\/\d{2}\/\d{4}$/.test(item.texto.trim())
         ? item.texto.trim()
         : null;
       const mesmaLinha = (tolerancia: number) =>
-        itens.filter((outro) => Math.abs(outro.y - item.y) < tolerancia);
-      let resumo: SummaryItem | undefined;
+        items.filter((outro) => Math.abs(outro.y - item.y) < tolerancia);
+      let matchedSummary: SummaryItem | undefined;
       let isTotal = false;
       if (data && secao === 'data' && x > 0.54 && x < 0.6) {
-        resumo = resumos.porData[data];
-        datas.add(data);
+        matchedSummary = resumos.porData[data];
+        dates.add(data);
       } else if (data && secao === 'lote' && x > 0.45 && x < 0.52) {
         const lote = mesmaLinha(3)
           .find(
             (outro) =>
-              outro.x / pagina.largura > 0.55 &&
-              outro.x / pagina.largura < 0.6 &&
+              outro.x / page.largura > 0.55 &&
+              outro.x / page.largura < 0.6 &&
               /^\d+$/.test(outro.texto.trim()),
           )
           ?.texto.trim();
         if (lote) {
-          const chave = `${data}|${lote}`;
-          resumo = resumos.porLote[chave];
-          lotes.add(chave);
+          const key = `${data}|${lote}`;
+          matchedSummary = resumos.porLote[key];
+          lotes.add(key);
         }
       } else if (item.texto.trim() === 'Total' && x > 0.56 && x < 0.62) {
-        resumo = resumos.total;
+        matchedSummary = resumos.total;
         isTotal = true;
       } else {
         continue;
       }
-      if (!resumo)
+      if (!matchedSummary)
         throw new Error(
           'Resumo do relatório não corresponde às linhas importadas.',
         );
-      const linha = mesmaLinha(isTotal ? 10 : 3);
-      const substituirNumero = (min: number, max: number, valor: number) => {
-        const campo = linha.find(
+      const line = mesmaLinha(isTotal ? 10 : 3);
+      const substituirNumero = (min: number, max: number, value: number) => {
+        const field = line.find(
           (t) =>
-            t.x / pagina.largura >= min &&
-            t.x / pagina.largura < max &&
+            t.x / page.largura >= min &&
+            t.x / page.largura < max &&
             /^\d[\d.,]*$/.test(t.texto.trim()),
         );
-        if (!campo) throw new Error('Campo de resumo não reconhecido.');
-        campo.texto = formatarNumero(valor, campo.texto);
+        if (!field) throw new Error('Campo de resumo não reconhecido.');
+        field.texto = formatarNumero(value, field.texto);
       };
-      substituirNumero(0.62, 0.675, resumo.necessaria);
-      substituirNumero(0.68, 0.72, resumo.realizada);
-      substituirNumero(0.73, 0.79, resumo.saldo);
-      const campoTempo = linha.find(
+      substituirNumero(0.62, 0.675, matchedSummary.necessaria);
+      substituirNumero(0.68, 0.72, matchedSummary.realizada);
+      substituirNumero(0.73, 0.79, matchedSummary.saldo);
+      const campoTempo = line.find(
         (t) =>
-          t.x / pagina.largura > 0.89 &&
-          /^\d+:\d{2}:\d{2}$/.test(t.texto.trim()),
+          t.x / page.largura > 0.89 && /^\d+:\d{2}:\d{2}$/.test(t.texto.trim()),
       );
       if (!campoTempo) throw new Error('Tempo do resumo não reconhecido.');
       if (isTotal) {
-        const campoDias = linha.find(
-          (t) => t.x / pagina.largura > 0.89 && /^\d+D$/.test(t.texto.trim()),
+        const campoDias = line.find(
+          (t) => t.x / page.largura > 0.89 && /^\d+D$/.test(t.texto.trim()),
         );
         if (!campoDias) throw new Error('Dias do resumo não reconhecidos.');
-        campoDias.texto = `${Math.floor(resumo.tempoProducaoSegundos / 86400)}D`;
-        campoTempo.texto = tempo(resumo.tempoProducaoSegundos % 86400);
+        campoDias.texto = `${Math.floor(matchedSummary.tempoProducaoSegundos / 86400)}D`;
+        campoTempo.texto = tempo(matchedSummary.tempoProducaoSegundos % 86400);
       } else {
-        campoTempo.texto = tempo(resumo.tempoProducaoSegundos);
+        campoTempo.texto = tempo(matchedSummary.tempoProducaoSegundos);
       }
     }
   }
   if (
-    datas.size !== Object.keys(resumos.porData).length ||
+    dates.size !== Object.keys(resumos.porData).length ||
     lotes.size !== Object.keys(resumos.porLote).length
   ) {
     throw new Error('Nem todos os resumos puderam ser identificados.');
@@ -147,26 +146,26 @@ interface LinhaParaSubtotal {
 }
 
 export function updatePageSubtotals(
-  paginas: PageWithFragments[],
-  linhas: LinhaParaSubtotal[],
+  pages: PageWithFragments[],
+  lines: LinhaParaSubtotal[],
 ) {
-  const grupos = new Map<string, LinhaParaSubtotal[]>();
-  for (const linha of linhas) {
-    const grupo = grupos.get(linha.dataEntrega) ?? [];
-    grupo.push(linha);
-    grupos.set(linha.dataEntrega, grupo);
+  const groups = new Map<string, LinhaParaSubtotal[]>();
+  for (const line of lines) {
+    const group = groups.get(line.dataEntrega) ?? [];
+    group.push(line);
+    groups.set(line.dataEntrega, group);
   }
   function aplicar(
-    pagina: PageWithFragments,
+    page: PageWithFragments,
     y: number,
-    grupo: LinhaParaSubtotal[],
+    group: LinhaParaSubtotal[],
     detalhe: boolean,
   ) {
-    const proximos = pagina.trechos.filter(
-      (trecho) => Math.abs(trecho.y - y) < 9,
+    const proximos = page.trechos.filter(
+      (fragment) => Math.abs(fragment.y - y) < 9,
     );
     const soma = (
-      campo: keyof Pick<
+      field: keyof Pick<
         LinhaParaSubtotal,
         | 'area'
         | 'pendente'
@@ -179,13 +178,13 @@ export function updatePageSubtotals(
         | 'tempoUnitarioSegundos'
         | 'tempoProducaoSegundos'
       >,
-    ) => grupo.reduce((total, item) => total + item[campo], 0);
+    ) => group.reduce((total, item) => total + item[field], 0);
     const camposDetalhe: [number, number, number][] = detalhe
       ? [
           [
             0.43,
             0.475,
-            grupo.reduce(
+            group.reduce(
               (total, item) => total + Math.round(item.area * 100),
               0,
             ) / 100,
@@ -201,63 +200,65 @@ export function updatePageSubtotals(
       [0.62, 0.675, soma('realizada')],
       [0.675, 0.735, soma('saldo')],
     ] as const) {
-      const campo = proximos.find(
-        (trecho) =>
-          trecho.x / pagina.largura >= min &&
-          trecho.x / pagina.largura < max &&
-          /^\d[\d.,]*$/.test(trecho.texto.trim()),
+      const field = proximos.find(
+        (fragment) =>
+          fragment.x / page.largura >= min &&
+          fragment.x / page.largura < max &&
+          /^\d[\d.,]*$/.test(fragment.texto.trim()),
       );
-      if (!campo) throw new Error('Subtotal de quantidade não reconhecido.');
-      campo.texto = formatarNumero(valor, campo.texto);
+      if (!field) throw new Error('Subtotal de quantidade não reconhecido.');
+      field.texto = formatarNumero(valor, field.texto);
     }
     for (const [min, max, segundos] of [
       [0.78, 0.835, soma('tempoSetupSegundos')],
       [0.835, 0.895, soma('tempoUnitarioSegundos')],
       [0.895, 0.97, soma('tempoProducaoSegundos')],
     ] as const) {
-      const campos = proximos.filter(
-        (trecho) =>
-          trecho.x / pagina.largura >= min && trecho.x / pagina.largura < max,
+      const fields = proximos.filter(
+        (fragment) =>
+          fragment.x / page.largura >= min && fragment.x / page.largura < max,
       );
-      const horas = campos.find((trecho) =>
-        /^\d+:\d{2}:\d{2}$/.test(trecho.texto.trim()),
+      const hours = fields.find((fragment) =>
+        /^\d+:\d{2}:\d{2}$/.test(fragment.texto.trim()),
       );
-      const dias = campos.find((trecho) => /^\d+D$/.test(trecho.texto.trim()));
-      if (!horas || !dias)
+      const dias = fields.find((fragment) =>
+        /^\d+D$/.test(fragment.texto.trim()),
+      );
+      if (!hours || !dias)
         throw new Error('Subtotal de tempo não reconhecido.');
       dias.texto = `${Math.floor(segundos / 86400)}D`;
-      horas.texto = tempo(segundos % 86400);
+      hours.texto = tempo(segundos % 86400);
     }
   }
-  for (const grupo of grupos.values()) {
-    const ultima = grupo[grupo.length - 1].campos.necessaria;
-    const pagina = paginas.find((item) => item.numero === ultima.pagina);
-    const trecho = pagina?.trechos[ultima.indice];
-    if (!pagina || !trecho)
+  for (const group of groups.values()) {
+    const ultima = group[group.length - 1].campos.necessaria;
+    const page = pages.find((item) => item.numero === ultima.pagina);
+    const fragment = page?.trechos[ultima.indice];
+    if (!page || !fragment)
       throw new Error('Última linha do grupo não encontrada.');
-    const subtotal = pagina.trechos
+    const subtotal = page.trechos
       .filter(
         (item) =>
-          item.y - trecho.y > 8 &&
-          item.y - trecho.y < 40 &&
-          item.x / pagina.largura >= 0.555 &&
-          item.x / pagina.largura < 0.62 &&
+          item.y - fragment.y > 8 &&
+          item.y - fragment.y < 40 &&
+          item.x / page.largura >= 0.555 &&
+          item.x / page.largura < 0.62 &&
           /^\d[\d.,]*$/.test(item.texto.trim()),
       )
       .sort((a, b) => a.y - b.y)[0];
     if (!subtotal) throw new Error('Subtotal do grupo não encontrado.');
-    aplicar(pagina, subtotal.y, grupo, true);
+    aplicar(page, subtotal.y, group, true);
   }
-  const totais = paginas.flatMap((pagina) =>
-    pagina.trechos
+  const totais = pages.flatMap((page) =>
+    page.trechos
       .filter(
         (item) =>
           item.texto.trim() === 'Total:' &&
-          item.x / pagina.largura > 0.5 &&
-          item.x / pagina.largura < 0.55,
+          item.x / page.largura > 0.5 &&
+          item.x / page.largura < 0.55,
       )
-      .map((item) => ({ pagina, item })),
+      .map((item) => ({ pagina: page, item })),
   );
   if (totais.length !== 1) throw new Error('Total geral não encontrado.');
-  aplicar(totais[0].pagina, totais[0].item.y, linhas, false);
+  aplicar(totais[0].pagina, totais[0].item.y, lines, false);
 }

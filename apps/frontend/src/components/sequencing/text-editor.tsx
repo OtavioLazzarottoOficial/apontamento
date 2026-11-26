@@ -3,32 +3,32 @@ import type { Report, FieldReference } from "./sequencing-shared.ts";
 import { request } from "./sequencing-shared.ts";
 
 export function TextEditor({
-  relatorio,
+  report: currentReport,
   token,
-  selecionado,
-  aoFechar,
-  aoSalvar,
+  selected: selection,
+  onClose: handleClose,
+  onSave: handleSave,
 }: {
-  relatorio: Report;
+  report: Report;
   token: string;
-  selecionado: { referencia: FieldReference; rotulo: string };
-  aoFechar: () => void;
-  aoSalvar: (relatorio: Report) => void;
+  selected: { reference: FieldReference; label: string };
+  onClose: () => void;
+  onSave: (report: Report) => void;
 }) {
-  const trecho = relatorio.conteudo.paginas.find(
-    (pagina) => pagina.numero === selecionado.referencia.pagina,
-  )?.trechos[selecionado.referencia.indice];
-  const [valor, setValor] = useState(trecho?.texto ?? "");
-  const [erro, setErro] = useState("");
-  const [ocupado, setOcupado] = useState(false);
+  const fragment = currentReport.conteudo.paginas.find(
+    (page) => page.numero === selection.reference.pagina,
+  )?.trechos[selection.reference.indice];
+  const [inputValue, setInputValue] = useState(fragment?.texto ?? "");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
 
-  async function salvar(evento: FormEvent<HTMLFormElement>) {
-    evento.preventDefault();
-    setErro("");
-    setOcupado(true);
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setErrorMessage("");
+    setIsBusy(true);
     try {
-      const atualizado = await request<Report>(
-        `/relatorios/${encodeURIComponent(relatorio.id)}/texto`,
+      const updated = await request<Report>(
+        `/relatorios/${encodeURIComponent(currentReport.id)}/texto`,
         {
           method: "PATCH",
           headers: {
@@ -36,21 +36,21 @@ export function TextEditor({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            versaoEsperada: relatorio.versao,
-            ...selecionado.referencia,
-            texto: valor,
+            versaoEsperada: currentReport.versao,
+            ...selection.reference,
+            texto: inputValue,
           }),
         },
       );
-      aoSalvar(atualizado);
+      handleSave(updated);
     } catch (causa) {
-      setErro(
+      setErrorMessage(
         causa instanceof Error
           ? causa.message
           : "Não foi possível salvar o texto.",
       );
     } finally {
-      setOcupado(false);
+      setIsBusy(false);
     }
   }
   return (
@@ -61,24 +61,24 @@ export function TextEditor({
         aria-labelledby="titulo-texto"
         className="modal-campo"
       >
-        <h2 id="titulo-texto">{selecionado.rotulo}</h2>
-        <form className="form-stack" onSubmit={salvar}>
+        <h2 id="titulo-texto">{selection.label}</h2>
+        <form className="form-stack" onSubmit={save}>
           <label>
             Texto
             <input
               autoFocus
-              value={valor}
-              onChange={(evento) => setValor(evento.target.value)}
+              value={inputValue}
+              onChange={(event) => setInputValue(event.target.value)}
               maxLength={150}
               required
             />
           </label>
-          {erro && <p role="alert">{erro}</p>}
+          {errorMessage && <p role="alert">{errorMessage}</p>}
           <div className="modal-acoes">
-            <button type="button" className="secondary" onClick={aoFechar}>
+            <button type="button" className="secondary" onClick={handleClose}>
               Cancelar
             </button>
-            <button disabled={ocupado}>Salvar</button>
+            <button disabled={isBusy}>Salvar</button>
           </div>
         </form>
       </section>

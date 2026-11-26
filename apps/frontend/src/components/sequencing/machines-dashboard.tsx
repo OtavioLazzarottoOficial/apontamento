@@ -1,6 +1,12 @@
 import { summarizeDailyAreas } from "./summarize-daily-areas.ts";
 import { useMemo, useState } from "react";
 import type { Machine, ReportSummary } from "./sequencing-shared.ts";
+import {
+  belongsToProductionWeek,
+  currentProductionWeek,
+  formatProductionWeek,
+  productionWeeks,
+} from "./production-week.ts";
 
 export function MachinesDashboard({
   machines,
@@ -20,7 +26,7 @@ export function MachinesDashboard({
   onImport: (machineId: string) => void;
 }) {
   const [date, setDate] = useState("");
-  const [month, setMonth] = useState("");
+  const [week, setWeek] = useState(currentProductionWeek);
   const [selected, setSelected] = useState<Record<string, string>>({});
   const dates = useMemo(
     () =>
@@ -39,22 +45,21 @@ export function MachinesDashboard({
       ),
     [reports],
   );
-  const months = [
-    ...new Set(
-      dates
-        .filter((item) => /^\d{2}\/\d{2}\/\d{4}$/.test(item))
-        .map((item) => `${item.slice(6)}-${item.slice(3, 5)}`),
-    ),
-  ].sort();
-  const activeMonth = months.includes(month) ? month : (months[0] ?? "");
-  const datesInMonth = dates.filter(
-    (item) => `${item.slice(6)}-${item.slice(3, 5)}` === activeMonth,
+  const weeks = productionWeeks(dates);
+  const datesInWeek = dates.filter((item) =>
+    belongsToProductionWeek(item, week),
   );
-  const activeDate = datesInMonth.includes(date)
-    ? date
-    : (datesInMonth[0] ?? "");
-  const { groups, unresolved, missing, incomplete, total } =
-    summarizeDailyAreas(machines, reports, activeDate, selected);
+  const activeDate = datesInWeek.includes(date) ? date : (datesInWeek[0] ?? "");
+  const {
+    groups,
+    unresolved,
+    missing,
+    incomplete,
+    total,
+    missingWeekly,
+    weeklyIncomplete,
+    weeklyTotal,
+  } = summarizeDailyAreas(machines, reports, activeDate, selected, week);
   const format = (value: number) =>
     value.toLocaleString("pt-BR", {
       minimumFractionDigits: 2,
@@ -66,52 +71,51 @@ export function MachinesDashboard({
       <h1>Visão geral</h1>
       <p>Área planejada por máquina e data de entrega.</p>
       <>
-        {dates.length > 0 ? (
-          <div className="dashboard-filters">
-            <label>
-              Mês
-              <select
-                value={activeMonth}
-                onChange={(event) => {
-                  setMonth(event.target.value);
-                  setDate("");
-                }}
-              >
-                {months.map((item) => (
-                  <option key={item} value={item}>
-                    {new Date(
-                      Number(item.slice(0, 4)),
-                      Number(item.slice(5)) - 1,
-                    ).toLocaleDateString("pt-BR", {
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="dashboard-date">
-              Data
-              <select
-                value={activeDate}
-                onChange={(event) => setDate(event.target.value)}
-              >
-                {datesInMonth.map((item) => (
-                  <option key={item}>{item}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-        ) : (
-          <p>Não há datas nos sequenciamentos importados.</p>
-        )}
+        <div className="dashboard-filters">
+          <label>
+            Semana (segunda a sexta)
+            <select
+              value={week}
+              onChange={(event) => {
+                setWeek(event.target.value);
+                setDate("");
+              }}
+            >
+              {weeks.map((item) => (
+                <option key={item} value={item}>
+                  {formatProductionWeek(item)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="dashboard-date">
+            Data
+            <select
+              value={activeDate}
+              onChange={(event) => setDate(event.target.value)}
+            >
+              {datesInWeek.length === 0 && (
+                <option value="">Sem datas nesta semana</option>
+              )}
+              {datesInWeek.map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </label>
+        </div>
         <div className="dashboard-total">
           <span>
             {incomplete
-              ? "Área selecionada até agora"
-              : "Área total planejada do setor"}
+              ? "Área do dia selecionada até agora"
+              : "Área total planejada do setor no dia"}
           </span>
           <strong>{format(total)} m²</strong>
+          <span>
+            {weeklyIncomplete
+              ? "Área da semana selecionada até agora"
+              : "Área total planejada do setor na semana"}
+          </span>
+          <strong>{format(weeklyTotal)} m²</strong>
           <small>
             Inclui as ordens concluídas; soma a área das máquinas com
             sequenciamento selecionado.
@@ -125,12 +129,18 @@ export function MachinesDashboard({
         )}
         {missing > 0 && (
           <p role="status">
-            Há máquinas sem sequenciamento para esta data; o total está
+            Há máquinas sem sequenciamento para a data selecionada; o total está
             incompleto.
           </p>
         )}
+        {missingWeekly > 0 && (
+          <p role="status">
+            Há máquinas sem sequenciamento para a semana selecionada; o total
+            semanal está incompleto.
+          </p>
+        )}
         <div className="dashboard-grid">
-          {groups.map(({ machine, options, chosen, area }) => (
+          {groups.map(({ machine, options, chosen, area, weekArea }) => (
             <article className="tool-card" key={machine.id}>
               <h2>{machine.name}</h2>
               {canEdit && (
@@ -151,7 +161,7 @@ export function MachinesDashboard({
                     onChange={(event) =>
                       setSelected((current) => ({
                         ...current,
-                        [`${activeDate}:${machine.id}`]: event.target.value,
+                        [`${week}:${machine.id}`]: event.target.value,
                       }))
                     }
                   >
@@ -165,13 +175,21 @@ export function MachinesDashboard({
                 </label>
               )}
               {!options.length ? (
-                <p>Sem sequenciamento para a data.</p>
+                <p>Sem sequenciamento para a semana.</p>
               ) : chosen ? (
                 <>
                   <p className="dashboard-report-name">
                     PDF: {chosen.nome || "Relatório sem nome"}
                   </p>
-                  <strong className="machine-area">{format(area)} m²</strong>
+                  <p>
+                    Área na data selecionada: <strong>{format(area)} m²</strong>
+                  </p>
+                  <p>
+                    Área planejada na semana:{" "}
+                    <strong className="machine-area">
+                      {format(weekArea)} m²
+                    </strong>
+                  </p>
                   <button
                     type="button"
                     className="secondary"

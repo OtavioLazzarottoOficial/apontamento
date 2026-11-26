@@ -1,35 +1,29 @@
 import type { ReportSummary } from '../repositories/reports-repository.ts';
 
+export interface ReportAreaLine {
+  deliveryDate: string;
+  area: number;
+}
+
 export function summarizeReport(
   id: string,
   version: number,
-  name: unknown,
-  machineId: unknown,
-  lines: unknown,
+  name: string,
+  machineId: string | null,
+  lines: ReportAreaLine[],
 ): ReportSummary {
   const dailyAreas = new Map<string, number>();
-  if (Array.isArray(lines)) {
-    for (const line of lines) {
-      if (
-        typeof line !== 'object' ||
-        line === null ||
-        typeof line.dataEntrega !== 'string' ||
-        !line.dataEntrega ||
-        typeof line.area !== 'number' ||
-        !Number.isFinite(line.area)
-      )
-        continue;
-      dailyAreas.set(
-        line.dataEntrega,
-        (dailyAreas.get(line.dataEntrega) ?? 0) + line.area,
-      );
-    }
+  for (const line of lines) {
+    dailyAreas.set(
+      line.deliveryDate,
+      (dailyAreas.get(line.deliveryDate) ?? 0) + line.area,
+    );
   }
   return {
     id,
-    versao: version,
-    nome: typeof name === 'string' ? name : '',
-    machineId: typeof machineId === 'string' ? machineId : null,
+    version,
+    name,
+    machineId,
     dailyAreas: Array.from(dailyAreas, ([date, area]) => ({ date, area })),
   };
 }

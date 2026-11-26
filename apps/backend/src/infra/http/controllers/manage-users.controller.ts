@@ -25,26 +25,27 @@ export class ManageUsersController {
   ) {}
 
   @Get()
-  async listarUsuarios() {
-    const resultado = await this.list.execute();
-    if (resultado.isLeft()) {
+  async listUsers() {
+    const result = await this.list.execute();
+    if (result.isLeft()) {
       throw new Error('Falha inesperada ao listar usuários.');
     }
     return {
-      usuarios: resultado.value.usuarios.map((usuario) =>
-        UserPresenter.toHTTP(usuario),
-      ),
+      usuarios: result.value.users.map((user) => UserPresenter.toHTTP(user)),
     };
   }
 
   @Patch(':id/permissoes')
-  async alterarPermissoes(
+  async updatePermissions(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(schema)) body: z.infer<typeof schema>,
   ) {
-    const resultado = await this.change.execute({ id, ...body });
-    if (resultado.isLeft())
-      throw new NotFoundException(resultado.value.message);
-    return UserPresenter.toHTTP(resultado.value.usuario);
+    const result = await this.change.execute({
+      id,
+      canEdit: body.podeEditar,
+      canExport: body.podeExportar,
+    });
+    if (result.isLeft()) throw new NotFoundException(result.value.message);
+    return UserPresenter.toHTTP(result.value.user);
   }
 }

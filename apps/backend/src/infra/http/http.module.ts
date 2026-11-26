@@ -1,3 +1,4 @@
+import { AssociateReportMachineUseCase } from '../../domain/sequencing/application/usecases/associate-report-machine-usecase.ts';
 import { DeleteReportController } from './controllers/delete-report.controller.ts';
 import { DeleteReportUseCase } from '../../domain/sequencing/application/usecases/delete-report-usecase.ts';
 import { AssociateReportMachineController } from './controllers/associate-report-machine.controller.ts';
@@ -71,6 +72,7 @@ import { OriginalReportPdfController } from './controllers/original-report-pdf.c
     UpdateReportTextController,
   ],
   providers: [
+    AssociateReportMachineUseCase,
     DeleteReportUseCase,
     ManageMachinesUseCase,
     PdfReportPageSummaryUpdater,

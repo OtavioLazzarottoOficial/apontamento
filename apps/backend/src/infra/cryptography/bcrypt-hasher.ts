@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { compare, hash } from 'bcryptjs';
-import { HashGenerator } from '../../domain/auth/application/crypthograpy/hash-generator.ts';
-import { HashComparer } from '../../domain/auth/application/crypthograpy/hash-comparer.ts';
+import { HashGenerator } from '../../domain/auth/application/cryptography/hash-generator.ts';
+import { HashComparer } from '../../domain/auth/application/cryptography/hash-comparer.ts';
 
 @Injectable()
 export class BcryptHasher implements HashGenerator, HashComparer {

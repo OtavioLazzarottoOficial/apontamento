@@ -1,3 +1,4 @@
+import { LegacyReportDocument } from '../../pdf/legacy-report-document.ts';
 import {
   ConflictException,
   Controller,
@@ -16,10 +17,9 @@ export class ExportReportController {
   @Get(':id/exportar')
   @UseGuards(ExportPermissionGuard)
   async handle(@Param('id') id: string) {
-    const resultado = await this.get.execute(id);
-    if (resultado.isLeft())
-      throw new NotFoundException(resultado.value.message);
-    if (!resultado.value.report.content.resumos) {
+    const result = await this.get.execute(id);
+    if (result.isLeft()) throw new NotFoundException(result.value.message);
+    if (!LegacyReportDocument.dataOf(result.value.report.content).resumos) {
       throw new ConflictException(
         'Salve uma linha para recalcular o relatório antes de exportar.',
       );

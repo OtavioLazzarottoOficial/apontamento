@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Either } from '../../../../core/either.ts';
-import type { ReportValue } from '../../enterprise/report.ts';
-import type { ProductionOrderLine } from '../../enterprise/value-objects/production-order-line.ts';
+import type { ReportDocument } from '../models/report-document.ts';
+import type { ProductionOrderLineObjectValue } from '../../enterprise/value-objects/production-order-line-object-value.ts';
 import type { InvalidLineValuesError } from '../../enterprise/errors/invalid-line-values-error.ts';
 import type { LineNotFoundError } from '../usecases/errors/line-not-found-error.ts';
 
@@ -19,23 +19,29 @@ export interface ReportLineChanges {
 
 @Injectable()
 export abstract class ReportDocumentEditor {
+  abstract updateMachine(
+    content: ReportDocument,
+    machineId: string | null,
+  ): ReportDocument;
+
   abstract updateText(
-    content: Record<string, ReportValue>,
+    content: ReportDocument,
     page: number,
     index: number,
     text: string,
-  ): Either<LineNotFoundError, { content: Record<string, ReportValue> }>;
+  ): Either<LineNotFoundError, { content: ReportDocument }>;
   abstract updateCompletion(
-    content: Record<string, ReportValue>,
+    content: ReportDocument,
     index: number,
     completed: boolean,
-  ): Either<LineNotFoundError, { content: Record<string, ReportValue> }>;
+  ): Either<LineNotFoundError, { content: ReportDocument }>;
   abstract updateLine(
-    content: Record<string, ReportValue>,
+    content: ReportDocument,
     changes: ReportLineChanges,
-    calculation: ProductionOrderLine,
+    calculation: ProductionOrderLineObjectValue,
+    reportId: string,
   ): Either<
     InvalidLineValuesError | LineNotFoundError,
-    { content: Record<string, ReportValue> }
+    { content: ReportDocument }
   >;
 }

@@ -3,70 +3,70 @@ import type { UserProfile } from "./sequencing-shared.ts";
 import { request } from "./sequencing-shared.ts";
 
 export function UserManagement({ token }: { token: string }) {
-  const [mensagem, setMensagem] = useState("");
-  const [ocupado, setOcupado] = useState(false);
-  const [usuarios, setUsuarios] = useState<(UserProfile & { id: string })[]>(
+  const [statusMessage, setStatusMessage] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
+  const [userList, setUserList] = useState<(UserProfile & { id: string })[]>(
     [],
   );
 
   useEffect(() => {
-    const abortador = new AbortController();
+    const abortController = new AbortController();
     void request<{ usuarios: (UserProfile & { id: string })[] }>("/usuarios", {
       headers: { Authorization: `Bearer ${token}` },
-      signal: abortador.signal,
+      signal: abortController.signal,
     })
-      .then((resultado) => setUsuarios(resultado.usuarios))
+      .then((result) => setUserList(result.usuarios))
       .catch(() => {
-        if (!abortador.signal.aborted)
-          setMensagem("Não foi possível carregar os usuários.");
+        if (!abortController.signal.aborted)
+          setStatusMessage("Não foi possível carregar os usuários.");
       });
-    return () => abortador.abort();
+    return () => abortController.abort();
   }, [token]);
 
-  async function cadastrar(evento: FormEvent<HTMLFormElement>) {
-    evento.preventDefault();
-    const form = evento.currentTarget;
-    const dados = new FormData(form);
-    setOcupado(true);
-    setMensagem("");
+  async function cadastrar(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    setIsBusy(true);
+    setStatusMessage("");
     try {
-      const usuario = await request<UserProfile & { id: string }>("/usuarios", {
+      const user = await request<UserProfile & { id: string }>("/usuarios", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          email: dados.get("email"),
-          senha: dados.get("senha"),
-          podeEditar: dados.has("podeEditar"),
-          podeExportar: dados.has("podeExportar"),
+          email: formData.get("email"),
+          senha: formData.get("senha"),
+          podeEditar: formData.has("podeEditar"),
+          podeExportar: formData.has("podeExportar"),
         }),
       });
-      setUsuarios((atuais) => [...atuais, usuario]);
+      setUserList((atuais) => [...atuais, user]);
       form.reset();
-      setMensagem("Usuário cadastrado.");
-    } catch (erro) {
-      setMensagem(
-        erro instanceof Error
-          ? erro.message
+      setStatusMessage("Usuário cadastrado.");
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error
+          ? error.message
           : "Não foi possível cadastrar o usuário.",
       );
     } finally {
-      setOcupado(false);
+      setIsBusy(false);
     }
   }
 
   async function salvarPermissoes(
-    evento: FormEvent<HTMLFormElement>,
+    event: FormEvent<HTMLFormElement>,
     id: string,
   ) {
-    evento.preventDefault();
-    const dados = new FormData(evento.currentTarget);
-    setOcupado(true);
-    setMensagem("");
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    setIsBusy(true);
+    setStatusMessage("");
     try {
-      const usuario = await request<UserProfile & { id: string }>(
+      const user = await request<UserProfile & { id: string }>(
         `/usuarios/${encodeURIComponent(id)}/permissoes`,
         {
           method: "PATCH",
@@ -75,23 +75,23 @@ export function UserManagement({ token }: { token: string }) {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            podeEditar: dados.has("podeEditar"),
-            podeExportar: dados.has("podeExportar"),
+            podeEditar: formData.has("podeEditar"),
+            podeExportar: formData.has("podeExportar"),
           }),
         },
       );
-      setUsuarios((atuais) =>
-        atuais.map((atual) => (atual.id === usuario.id ? usuario : atual)),
+      setUserList((atuais) =>
+        atuais.map((atual) => (atual.id === user.id ? user : atual)),
       );
-      setMensagem("Permissões atualizadas.");
-    } catch (erro) {
-      setMensagem(
-        erro instanceof Error
-          ? erro.message
+      setStatusMessage("Permissões atualizadas.");
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error
+          ? error.message
           : "Não foi possível atualizar as permissões.",
       );
     } finally {
-      setOcupado(false);
+      setIsBusy(false);
     }
   }
 
@@ -121,23 +121,23 @@ export function UserManagement({ token }: { token: string }) {
           <input type="checkbox" name="podeExportar" />
           Pode exportar relatórios
         </label>
-        <button disabled={ocupado}>Cadastrar usuário</button>
-        {mensagem && <p role="status">{mensagem}</p>}
+        <button disabled={isBusy}>Cadastrar usuário</button>
+        {statusMessage && <p role="status">{statusMessage}</p>}
       </form>
-      {usuarios
-        .filter((usuario) => usuario.papel === "USUARIO")
-        .map((usuario) => (
+      {userList
+        .filter((user) => user.papel === "USUARIO")
+        .map((user) => (
           <form
             className="user-permissions"
-            key={usuario.id}
-            onSubmit={(evento) => void salvarPermissoes(evento, usuario.id)}
+            key={user.id}
+            onSubmit={(event) => void salvarPermissoes(event, user.id)}
           >
-            <strong>{usuario.email}</strong>
+            <strong>{user.email}</strong>
             <label className="check">
               <input
                 name="podeEditar"
                 type="checkbox"
-                defaultChecked={usuario.podeEditar}
+                defaultChecked={user.podeEditar}
               />
               Editar
             </label>
@@ -145,11 +145,11 @@ export function UserManagement({ token }: { token: string }) {
               <input
                 name="podeExportar"
                 type="checkbox"
-                defaultChecked={usuario.podeExportar}
+                defaultChecked={user.podeExportar}
               />
               Exportar
             </label>
-            <button className="secondary" disabled={ocupado}>
+            <button className="secondary" disabled={isBusy}>
               Salvar permissões
             </button>
           </form>

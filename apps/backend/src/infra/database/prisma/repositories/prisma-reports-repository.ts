@@ -1,7 +1,7 @@
-import { summarizeReport } from '../../../../domain/sequencing/application/services/summarize-report.ts';
+import { PrismaReportSummaryMapper } from '../mappers/prisma-report-summary-mapper.ts';
 import { Injectable } from '@nestjs/common';
 import { ReportsRepository } from '../../../../domain/sequencing/application/repositories/reports-repository.ts';
-import type { Report } from '../../../../domain/sequencing/enterprise/report.ts';
+import type { ReportSnapshot } from '../../../../domain/sequencing/application/models/report-snapshot.ts';
 import { PrismaReportMapper } from '../mappers/prisma-report-mapper.ts';
 import { PrismaService } from '../prisma.service.ts';
 
@@ -24,9 +24,7 @@ export class PrismaReportsRepository extends ReportsRepository {
       SELECT id, versao, conteudo->>'nome' AS nome, conteudo->>'machineId' AS machine_id, conteudo->'linhas' AS linhas
       FROM relatorios_sequenciamento ORDER BY id
     `;
-    return rows.map((row) =>
-      summarizeReport(row.id, row.versao, row.nome, row.machine_id, row.linhas),
-    );
+    return rows.map((row) => PrismaReportSummaryMapper.toDomain(row));
   }
 
   async deleteIfVersionMatches(id: string, expectedVersion: number) {
@@ -36,32 +34,35 @@ export class PrismaReportsRepository extends ReportsRepository {
     return result.count === 1;
   }
 
-  async create(relatorio: Report) {
+  async create(report: ReportSnapshot) {
     await this.prisma.sequencingReport.create({
       data: {
-        id: relatorio.id.toString(),
-        version: relatorio.version,
-        content: PrismaReportMapper.toPrisma(relatorio),
+        id: report.id.toString(),
+        version: report.version,
+        content: PrismaReportMapper.toPrisma(report),
       },
     });
   }
 
   async findById(id: string) {
-    const registro = await this.prisma.sequencingReport.findUnique({
+    const record = await this.prisma.sequencingReport.findUnique({
       where: { id },
     });
-    return registro ? PrismaReportMapper.toDomain(registro) : null;
+    return record ? PrismaReportMapper.toDomain(record) : null;
   }
 
-  async updateIfVersionMatches(relatorio: Report, versaoEsperada: number) {
-    const resultado = await this.prisma.sequencingReport.updateMany({
-      where: { id: relatorio.id.toString(), version: versaoEsperada },
+  async updateIfVersionMatches(
+    report: ReportSnapshot,
+    expectedVersion: number,
+  ) {
+    const result = await this.prisma.sequencingReport.updateMany({
+      where: { id: report.id.toString(), version: expectedVersion },
       data: {
-        content: PrismaReportMapper.toPrisma(relatorio),
-        version: relatorio.version,
+        content: PrismaReportMapper.toPrisma(report),
+        version: report.version,
       },
     });
 
-    return resultado.count === 1;
+    return result.count === 1;
   }
 }

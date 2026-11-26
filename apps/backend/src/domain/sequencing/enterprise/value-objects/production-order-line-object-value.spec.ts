@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { ProductionOrderLine } from './production-order-line.ts';
+import { ProductionOrderLineObjectValue } from './production-order-line-object-value.ts';
 
-describe('ProductionOrderLine', () => {
+describe('ProductionOrderLineObjectValue', () => {
   const values = {
     requiredQuantity: 130,
     completedQuantity: 30,
@@ -10,7 +10,7 @@ describe('ProductionOrderLine', () => {
   };
 
   it('calculates balance and includes setup in production time', () => {
-    const result = ProductionOrderLine.create(values);
+    const result = ProductionOrderLineObjectValue.create(values);
     expect(result.isRight()).toBe(true);
     if (result.isRight()) {
       expect(result.value.balance).toBe(100);
@@ -24,8 +24,8 @@ describe('ProductionOrderLine', () => {
     { completedQuantity: -1 },
     { setupTimeSeconds: -1 },
   ])('rejects invalid values: %o', (changes) => {
-    expect(ProductionOrderLine.create({ ...values, ...changes }).isLeft()).toBe(
-      true,
-    );
+    expect(
+      ProductionOrderLineObjectValue.create({ ...values, ...changes }).isLeft(),
+    ).toBe(true);
   });
 });

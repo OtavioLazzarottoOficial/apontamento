@@ -45,65 +45,64 @@ export interface SequencingLine {
   };
 }
 
-function numero(texto: string): number | null {
-  const limpo = texto.trim();
+function number(text: string): number | null {
+  const limpo = text.trim();
   if (!/^\d{1,3}(?:\.\d{3})*(?:,\d+)?$|^\d+(?:,\d+)?$/.test(limpo)) return null;
   return Number(limpo.replace(/\./g, '').replace(',', '.'));
 }
 
-function duracao(texto: string): number | null {
-  const partes = /^(\d+):(\d{2}):(\d{2})$/.exec(texto.trim());
-  if (!partes || Number(partes[2]) >= 60 || Number(partes[3]) >= 60)
-    return null;
-  return Number(partes[1]) * 3600 + Number(partes[2]) * 60 + Number(partes[3]);
+function duration(text: string): number | null {
+  const parts = /^(\d+):(\d{2}):(\d{2})$/.exec(text.trim());
+  if (!parts || Number(parts[2]) >= 60 || Number(parts[3]) >= 60) return null;
+  return Number(parts[1]) * 3600 + Number(parts[2]) * 60 + Number(parts[3]);
 }
 
 /** Reconhece as linhas do mapa de sequenciamento com a disposição do modelo de referência. */
-export function identifySequencingLines(paginas: PdfPage[]): SequencingLine[] {
-  const linhas: SequencingLine[] = [];
+export function identifySequencingLines(pages: PdfPage[]): SequencingLine[] {
+  const lines: SequencingLine[] = [];
   let dataEntrega = '';
-  for (const pagina of paginas) {
-    const itens = pagina.trechos
-      .map((trecho, indice) => ({ trecho, indice }))
+  for (const page of pages) {
+    const items = page.trechos
+      .map((fragment, index) => ({ trecho: fragment, indice: index }))
       .sort((a, b) => a.trecho.y - b.trecho.y);
-    for (const { trecho } of itens) {
+    for (const { trecho } of items) {
       const data = /Data\s*Entrega\s*(\d{2}\/\d{2}\/\d{4})/i.exec(trecho.texto);
       if (data) {
         dataEntrega = data[1];
         continue;
       }
-      const x = trecho.x / pagina.largura;
+      const x = trecho.x / page.largura;
       if (!/^\d{8}$/.test(trecho.texto.trim()) || x < 0.17 || x > 0.21)
         continue;
-      const naLinha = itens.filter(
+      const naLinha = items.filter(
         (item) => Math.abs(item.trecho.y - trecho.y) < 2.5,
       );
-      const agrupamento = itens.filter(
+      const agrupamento = items.filter(
         (item) =>
           Math.abs(item.trecho.y - trecho.y) < 10 &&
-          item.trecho.x / pagina.largura >= 0.115 &&
-          item.trecho.x / pagina.largura < 0.17,
+          item.trecho.x / page.largura >= 0.115 &&
+          item.trecho.x / page.largura < 0.17,
       );
       const referenciasTexto = (min: number, max: number) =>
-        itens
+        items
           .filter(
             (item) =>
               Math.abs(item.trecho.y - trecho.y) < 10 &&
-              item.trecho.x / pagina.largura >= min &&
-              item.trecho.x / pagina.largura < max,
+              item.trecho.x / page.largura >= min &&
+              item.trecho.x / page.largura < max,
           )
-          .map((item) => ({ pagina: pagina.numero, indice: item.indice }));
+          .map((item) => ({ pagina: page.numero, indice: item.indice }));
       const camposTexto = {
         ordem: referenciasTexto(0.17, 0.21),
         produto: referenciasTexto(0, 0.112),
         componente: referenciasTexto(0.21, 0.36),
         dimensoes: referenciasTexto(0.36, 0.43),
       };
-      const dimensoes = camposTexto.dimensoes
-        .map((ref) => pagina.trechos[ref.indice].texto)
-        .map((texto) =>
+      const parsedDimensions = camposTexto.dimensoes
+        .map((ref) => page.trechos[ref.indice].texto)
+        .map((text) =>
           /^(\d+(?:[.,]\d+)?)\s*x\s*(\d+(?:[.,]\d+)?)\s*x\s*\d+(?:[.,]\d+)?/i.exec(
-            texto.trim(),
+            text.trim(),
           ),
         )
         .find(Boolean);
@@ -113,43 +112,43 @@ export function identifySequencingLines(paginas: PdfPage[]): SequencingLine[] {
       const programacao = agrupamento
         .map((item) => /\d{2}\/\d{2}\/\d{4}/.exec(item.trecho.texto)?.[0])
         .find(Boolean);
-      function campo(
+      function field(
         min: number,
         max: number,
-        parse: (texto: string) => number | null,
+        parse: (text: string) => number | null,
       ): { valor: number; ref: TextFragmentReference } | null {
         const opcoes = naLinha
           .map((item) => ({ ...item, valor: parse(item.trecho.texto) }))
           .filter(
             (item) =>
-              item.trecho.x / pagina.largura >= min &&
-              item.trecho.x / pagina.largura < max &&
+              item.trecho.x / page.largura >= min &&
+              item.trecho.x / page.largura < max &&
               item.valor !== null,
           );
         if (opcoes.length !== 1) return null;
         return {
           valor: opcoes[0].valor as number,
-          ref: { pagina: pagina.numero, indice: opcoes[0].indice },
+          ref: { pagina: page.numero, indice: opcoes[0].indice },
         };
       }
-      const area = campo(0.43, 0.475, numero);
-      const pendente = campo(0.475, 0.515, numero);
-      const anterior = campo(0.515, 0.555, numero);
-      const pecasPorCiclo = campo(0.735, 0.78, numero);
-      const necessaria = campo(0.555, 0.62, numero);
-      const realizada = campo(0.62, 0.675, numero);
-      const saldo = campo(0.675, 0.735, numero);
-      const tempoSetup = campo(0.78, 0.835, duracao);
-      const tempoUnitario = campo(0.835, 0.895, duracao);
-      const tempoProducao = campo(0.895, 0.97, duracao);
+      const area = field(0.43, 0.475, number);
+      const pendente = field(0.475, 0.515, number);
+      const previous = field(0.515, 0.555, number);
+      const pecasPorCiclo = field(0.735, 0.78, number);
+      const necessaria = field(0.555, 0.62, number);
+      const realizada = field(0.62, 0.675, number);
+      const saldo = field(0.675, 0.735, number);
+      const tempoSetup = field(0.78, 0.835, duration);
+      const tempoUnitario = field(0.835, 0.895, duration);
+      const tempoProducao = field(0.895, 0.97, duration);
       if (
         !dataEntrega ||
         !lote ||
         !programacao ||
-        !dimensoes ||
+        !parsedDimensions ||
         !area ||
         !pendente ||
-        !anterior ||
+        !previous ||
         !pecasPorCiclo ||
         !necessaria ||
         !realizada ||
@@ -159,19 +158,19 @@ export function identifySequencingLines(paginas: PdfPage[]): SequencingLine[] {
         !tempoProducao
       ) {
         throw new Error(
-          `Não foi possível identificar todos os valores da ordem ${trecho.texto} na página ${pagina.numero}.`,
+          `Não foi possível identificar todos os valores da ordem ${trecho.texto} na página ${page.numero}.`,
         );
       }
-      linhas.push({
+      lines.push({
         ordem: trecho.texto,
         dataEntrega,
         programacao,
         lote,
-        comprimentoMm: dimensoes[1],
-        larguraMm: dimensoes[2],
+        comprimentoMm: parsedDimensions[1],
+        larguraMm: parsedDimensions[2],
         area: area.valor,
         pendente: pendente.valor,
-        anterior: anterior.valor,
+        anterior: previous.valor,
         pecasPorCiclo: pecasPorCiclo.valor,
         necessaria: necessaria.valor,
         realizada: realizada.valor,
@@ -183,7 +182,7 @@ export function identifySequencingLines(paginas: PdfPage[]): SequencingLine[] {
         campos: {
           area: area.ref,
           pendente: pendente.ref,
-          anterior: anterior.ref,
+          anterior: previous.ref,
           pecasPorCiclo: pecasPorCiclo.ref,
           necessaria: necessaria.ref,
           realizada: realizada.ref,
@@ -195,5 +194,5 @@ export function identifySequencingLines(paginas: PdfPage[]): SequencingLine[] {
       });
     }
   }
-  return linhas;
+  return lines;
 }

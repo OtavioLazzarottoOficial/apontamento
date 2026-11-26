@@ -1,16 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { left, right, type Either } from '../../../../core/either.ts';
 import { User } from '../../enterprise/user.ts';
-import { HashGenerator } from '../crypthograpy/hash-generator.ts';
+import { HashGenerator } from '../cryptography/hash-generator.ts';
 import { UsersRepository } from '../repositories/users-repository.ts';
 import { EmailAlreadyRegisteredError } from './errors/email-already-registered-error.ts';
 import { InvalidPasswordError } from './errors/invalid-password-error.ts';
 
 interface Request {
   email: string;
-  senha: string;
-  podeEditar: boolean;
-  podeExportar: boolean;
+  password: string;
+  canEdit: boolean;
+  canExport: boolean;
 }
 
 @Injectable()
@@ -23,28 +23,25 @@ export class RegisterUserUseCase {
   async execute(
     request: Request,
   ): Promise<
-    Either<
-      InvalidPasswordError | EmailAlreadyRegisteredError,
-      { usuario: User }
-    >
+    Either<InvalidPasswordError | EmailAlreadyRegisteredError, { user: User }>
   > {
     if (
-      request.senha.length < 8 ||
-      Buffer.byteLength(request.senha, 'utf8') > 72
+      request.password.length < 8 ||
+      Buffer.byteLength(request.password, 'utf8') > 72
     ) {
       return left(new InvalidPasswordError());
     }
-    const senhaHash = await this.hashGenerator.hash(request.senha);
-    const usuario = User.create({
+    const passwordHash = await this.hashGenerator.hash(request.password);
+    const user = User.create({
       email: request.email.trim().toLowerCase(),
-      passwordHash: senhaHash,
-      role: 'USUARIO',
-      canEdit: request.podeEditar,
-      canExport: request.podeExportar,
+      passwordHash,
+      role: 'USER',
+      canEdit: request.canEdit,
+      canExport: request.canExport,
     });
-    if (!(await this.users.createIfEmailAvailable(usuario))) {
+    if (!(await this.users.createIfEmailAvailable(user))) {
       return left(new EmailAlreadyRegisteredError());
     }
-    return right({ usuario });
+    return right({ user });
   }
 }

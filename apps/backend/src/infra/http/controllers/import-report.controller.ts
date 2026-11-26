@@ -1,3 +1,4 @@
+import { LegacyReportDocument } from '../../pdf/legacy-report-document.ts';
 import { ManageMachinesUseCase } from '../../../domain/production/application/usecases/manage-machines-usecase.ts';
 import {
   BadRequestException,
@@ -49,76 +50,76 @@ export class ImportReportController {
       throw new BadRequestException('Selecione um arquivo PDF válido.');
     }
 
-    let paginas;
+    let pages;
     try {
-      paginas = await this.extractor.extrair(arquivo.buffer);
+      pages = await this.extractor.extract(arquivo.buffer);
     } catch {
       throw new BadRequestException(
         'Não foi possível ler o PDF. Verifique se o arquivo está íntegro e sem senha.',
       );
     }
-    if (!paginas.some((pagina) => pagina.trechos.length > 0)) {
+    if (!pages.some((page) => page.trechos.length > 0)) {
       throw new BadRequestException(
         'O PDF não contém texto selecionável. PDFs digitalizados ainda não são suportados.',
       );
     }
 
-    let linhas;
+    let lines;
     try {
-      linhas = identifySequencingLines(paginas);
-      if (linhas.length === 0) {
+      lines = identifySequencingLines(pages);
+      if (lines.length === 0) {
         throw new Error(
           'Nenhuma ordem de produção foi encontrada no formato esperado.',
         );
       }
-    } catch (erro) {
+    } catch (error) {
       throw new BadRequestException(
-        erro instanceof Error
-          ? erro.message
+        error instanceof Error
+          ? error.message
           : 'Formato de relatório não reconhecido.',
       );
     }
 
-    const resultado = await this.createReport.execute({
-      content: {
+    const result = await this.createReport.execute({
+      content: new LegacyReportDocument({
         nome: arquivo.originalname,
         machineId: machine.id.toString(),
         pdfBase64: arquivo.buffer.toString('base64'),
-        linhas: linhas.map((linha) => ({
-          ...linha,
+        linhas: lines.map((line) => ({
+          ...line,
           camposTexto: {
-            ordem: linha.camposTexto.ordem.map((ref) => ({ ...ref })),
-            produto: linha.camposTexto.produto.map((ref) => ({ ...ref })),
-            componente: linha.camposTexto.componente.map((ref) => ({ ...ref })),
-            dimensoes: linha.camposTexto.dimensoes.map((ref) => ({ ...ref })),
+            ordem: line.camposTexto.ordem.map((ref) => ({ ...ref })),
+            produto: line.camposTexto.produto.map((ref) => ({ ...ref })),
+            componente: line.camposTexto.componente.map((ref) => ({ ...ref })),
+            dimensoes: line.camposTexto.dimensoes.map((ref) => ({ ...ref })),
           },
           campos: {
-            area: { ...linha.campos.area },
-            pendente: { ...linha.campos.pendente },
-            anterior: { ...linha.campos.anterior },
-            pecasPorCiclo: { ...linha.campos.pecasPorCiclo },
-            necessaria: { ...linha.campos.necessaria },
-            realizada: { ...linha.campos.realizada },
-            saldo: { ...linha.campos.saldo },
-            tempoSetup: { ...linha.campos.tempoSetup },
-            tempoUnitario: { ...linha.campos.tempoUnitario },
-            tempoProducao: { ...linha.campos.tempoProducao },
+            area: { ...line.campos.area },
+            pendente: { ...line.campos.pendente },
+            anterior: { ...line.campos.anterior },
+            pecasPorCiclo: { ...line.campos.pecasPorCiclo },
+            necessaria: { ...line.campos.necessaria },
+            realizada: { ...line.campos.realizada },
+            saldo: { ...line.campos.saldo },
+            tempoSetup: { ...line.campos.tempoSetup },
+            tempoUnitario: { ...line.campos.tempoUnitario },
+            tempoProducao: { ...line.campos.tempoProducao },
           },
         })),
-        paginas: paginas.map((pagina) => ({
-          numero: pagina.numero,
-          largura: pagina.largura,
-          altura: pagina.altura,
-          trechos: pagina.trechos.map((trecho) => ({ ...trecho })),
+        paginas: pages.map((page) => ({
+          numero: page.numero,
+          largura: page.largura,
+          altura: page.altura,
+          trechos: page.trechos.map((fragment) => ({ ...fragment })),
         })),
-      },
+      }),
     });
-    if (resultado.isLeft()) {
+    if (result.isLeft()) {
       throw new Error('Falha inesperada ao criar relatório.');
     }
     return {
-      id: resultado.value.report.id.toString(),
-      versao: resultado.value.report.version,
+      id: result.value.report.id.toString(),
+      versao: result.value.report.version,
     };
   }
 }

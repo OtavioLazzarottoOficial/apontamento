@@ -16,7 +16,7 @@ export class PrismaUsersRepository extends UsersRepository {
       {
         email: raw.email,
         passwordHash: raw.passwordHash,
-        role: raw.role,
+        role: raw.role === 'ADMINISTRADOR' ? 'ADMIN' : 'USER',
         canEdit: raw.canEdit,
         canExport: raw.canExport,
       },
@@ -25,40 +25,36 @@ export class PrismaUsersRepository extends UsersRepository {
   }
 
   async list() {
-    const usuarios = await this.prisma.user.findMany({
+    const users = await this.prisma.user.findMany({
       orderBy: { email: 'asc' },
     });
-    return usuarios.map((usuario) => this.toDomain(usuario));
+    return users.map((user) => this.toDomain(user));
   }
 
-  async updatePermissions(
-    id: string,
-    podeEditar: boolean,
-    podeExportar: boolean,
-  ) {
-    const resultado = await this.prisma.user.updateMany({
+  async updatePermissions(id: string, canEdit: boolean, canExport: boolean) {
+    const result = await this.prisma.user.updateMany({
       where: { id, role: 'USUARIO' },
-      data: { canEdit: podeEditar, canExport: podeExportar },
+      data: { canEdit: canEdit, canExport: canExport },
     });
-    if (resultado.count === 0) return null;
+    if (result.count === 0) return null;
     return this.findById(id);
   }
 
-  async createIfEmailAvailable(usuario: User) {
-    const resultado = await this.prisma.user.createMany({
+  async createIfEmailAvailable(user: User) {
+    const result = await this.prisma.user.createMany({
       data: [
         {
-          id: usuario.id.toString(),
-          email: usuario.email,
-          passwordHash: usuario.passwordHash,
-          role: usuario.role,
-          canEdit: usuario.canEdit,
-          canExport: usuario.canExport,
+          id: user.id.toString(),
+          email: user.email,
+          passwordHash: user.passwordHash,
+          role: user.role === 'ADMIN' ? 'ADMINISTRADOR' : 'USUARIO',
+          canEdit: user.canEdit,
+          canExport: user.canExport,
         },
       ],
       skipDuplicates: true,
     });
-    return resultado.count === 1;
+    return result.count === 1;
   }
 
   async findByEmail(email: string) {

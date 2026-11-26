@@ -8,94 +8,94 @@ import {
 } from "./sequencing-shared.ts";
 
 export function FieldEditor({
-  relatorio,
+  report: currentReport,
   token,
-  selecionado,
-  aoFechar,
-  aoSalvar,
+  selected: selection,
+  onClose: handleClose,
+  onSave: handleSave,
 }: {
-  relatorio: Report;
+  report: Report;
   token: string;
-  selecionado: { indice: number; campo: EditableField };
-  aoFechar: () => void;
-  aoSalvar: (relatorio: Report) => void;
+  selected: { index: number; field: EditableField };
+  onClose: () => void;
+  onSave: (report: Report) => void;
 }) {
-  const linha = relatorio.conteudo.linhas[selecionado.indice];
-  const campo = selecionado.campo;
-  const duracao = campo === "tempoUnitario" || campo === "tempoSetup";
-  const dimensao = campo === "dimensoes";
-  const refDimensao = linha.camposTexto.dimensoes.find((ref) => {
-    const texto = relatorio.conteudo.paginas.find(
-      (pagina) => pagina.numero === ref.pagina,
+  const line = currentReport.conteudo.linhas[selection.index];
+  const field = selection.field;
+  const duration = field === "tempoUnitario" || field === "tempoSetup";
+  const dimension = field === "dimensoes";
+  const dimensionReference = line.camposTexto.dimensoes.find((ref) => {
+    const text = currentReport.conteudo.paginas.find(
+      (page) => page.numero === ref.pagina,
     )?.trechos[ref.indice]?.texto;
-    return texto && /^\d/.test(texto);
+    return text && /^\d/.test(text);
   });
-  const textoDimensao = refDimensao
-    ? relatorio.conteudo.paginas.find(
-        (pagina) => pagina.numero === refDimensao.pagina,
-      )?.trechos[refDimensao.indice]?.texto
+  const dimensionText = dimensionReference
+    ? currentReport.conteudo.paginas.find(
+        (page) => page.numero === dimensionReference.pagina,
+      )?.trechos[dimensionReference.indice]?.texto
     : "";
-  const numeros = {
-    necessaria: linha.necessaria,
-    realizada: linha.realizada,
-    pendente: linha.pendente,
-    anterior: linha.anterior,
-    pecasPorCiclo: linha.pecasPorCiclo,
+  const numbers = {
+    necessaria: line.necessaria,
+    realizada: line.realizada,
+    pendente: line.pendente,
+    anterior: line.anterior,
+    pecasPorCiclo: line.pecasPorCiclo,
   };
-  const inicial = dimensao
-    ? (textoDimensao ?? "")
-    : duracao
+  const initial = dimension
+    ? (dimensionText ?? "")
+    : duration
       ? formatDuration(
-          campo === "tempoUnitario"
-            ? linha.tempoUnitarioSegundos
-            : linha.tempoSetupSegundos,
+          field === "tempoUnitario"
+            ? line.tempoUnitarioSegundos
+            : line.tempoSetupSegundos,
         )
-      : String(numeros[campo as keyof typeof numeros]);
-  const [valor, setValor] = useState(inicial);
-  const [erro, setErro] = useState("");
-  const [ocupado, setOcupado] = useState(false);
+      : String(numbers[field as keyof typeof numbers]);
+  const [inputValue, setInputValue] = useState(initial);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
 
-  async function salvar(evento: FormEvent<HTMLFormElement>) {
-    evento.preventDefault();
-    setErro("");
-    setOcupado(true);
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setErrorMessage("");
+    setIsBusy(true);
     try {
-      const numero = duracao
-        ? parseDuration(valor)
-        : dimensao
+      const number = duration
+        ? parseDuration(inputValue)
+        : dimension
           ? 0
-          : Number(valor);
-      const corpo = {
-        versaoEsperada: relatorio.versao,
-        necessaria: campo === "necessaria" ? numero : linha.necessaria,
-        realizada: campo === "realizada" ? numero : linha.realizada,
+          : Number(inputValue);
+      const payload = {
+        versaoEsperada: currentReport.versao,
+        necessaria: field === "necessaria" ? number : line.necessaria,
+        realizada: field === "realizada" ? number : line.realizada,
         tempoUnitarioSegundos:
-          campo === "tempoUnitario" ? numero : linha.tempoUnitarioSegundos,
+          field === "tempoUnitario" ? number : line.tempoUnitarioSegundos,
         tempoSetupSegundos:
-          campo === "tempoSetup" ? numero : linha.tempoSetupSegundos,
-        dimensoes: dimensao ? valor : undefined,
-        pendente: campo === "pendente" ? numero : undefined,
-        anterior: campo === "anterior" ? numero : undefined,
-        pecasPorCiclo: campo === "pecasPorCiclo" ? numero : undefined,
+          field === "tempoSetup" ? number : line.tempoSetupSegundos,
+        dimensoes: dimension ? inputValue : undefined,
+        pendente: field === "pendente" ? number : undefined,
+        anterior: field === "anterior" ? number : undefined,
+        pecasPorCiclo: field === "pecasPorCiclo" ? number : undefined,
       };
-      const atualizado = await request<Report>(
-        `/relatorios/${encodeURIComponent(relatorio.id)}/linhas/${selecionado.indice}`,
+      const updated = await request<Report>(
+        `/relatorios/${encodeURIComponent(currentReport.id)}/linhas/${selection.index}`,
         {
           method: "PATCH",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(corpo),
+          body: JSON.stringify(payload),
         },
       );
-      aoSalvar(atualizado);
+      handleSave(updated);
     } catch (causa) {
-      setErro(
+      setErrorMessage(
         causa instanceof Error ? causa.message : "Não foi possível salvar.",
       );
     } finally {
-      setOcupado(false);
+      setIsBusy(false);
     }
   }
 
@@ -107,31 +107,31 @@ export function FieldEditor({
         aria-labelledby="titulo-campo"
         className="modal-campo"
       >
-        <h2 id="titulo-campo">{fieldLabels[campo]}</h2>
+        <h2 id="titulo-campo">{fieldLabels[field]}</h2>
         <p>
-          OP {linha.ordem}
-          {duracao ? " · use horas:minutos:segundos" : ""}
-          {dimensao ? " · use comprimento x largura x espessura, em mm" : ""}
+          OP {line.ordem}
+          {duration ? " · use horas:minutos:segundos" : ""}
+          {dimension ? " · use comprimento x largura x espessura, em mm" : ""}
         </p>
-        <form className="form-stack" onSubmit={salvar}>
+        <form className="form-stack" onSubmit={save}>
           <label>
             Valor
             <input
               autoFocus
-              type={duracao || dimensao ? "text" : "number"}
-              min={duracao || dimensao ? undefined : 0}
-              step={duracao || dimensao ? undefined : 1}
-              value={valor}
-              onChange={(evento) => setValor(evento.target.value)}
+              type={duration || dimension ? "text" : "number"}
+              min={duration || dimension ? undefined : 0}
+              step={duration || dimension ? undefined : 1}
+              value={inputValue}
+              onChange={(event) => setInputValue(event.target.value)}
               required
             />
           </label>
-          {erro && <p role="alert">{erro}</p>}
+          {errorMessage && <p role="alert">{errorMessage}</p>}
           <div className="modal-acoes">
-            <button type="button" className="secondary" onClick={aoFechar}>
+            <button type="button" className="secondary" onClick={handleClose}>
               Cancelar
             </button>
-            <button disabled={ocupado}>Salvar</button>
+            <button disabled={isBusy}>Salvar</button>
           </div>
         </form>
       </section>

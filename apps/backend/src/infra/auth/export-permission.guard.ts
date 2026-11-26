@@ -13,8 +13,8 @@ export class ExportPermissionGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest<{ user: UserPayload }>();
-    const usuario = await this.users.findById(request.user.sub);
-    if (!usuario || (usuario.role !== 'ADMINISTRADOR' && !usuario.canExport)) {
+    const user = await this.users.findById(request.user.sub);
+    if (!user || (user.role !== 'ADMIN' && !user.canExport)) {
       throw new ForbiddenException(
         'Você não tem permissão para exportar relatórios.',
       );
